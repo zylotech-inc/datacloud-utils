@@ -1,11 +1,31 @@
 from setuptools import find_packages, setup
 
+VERSION = "0.1.1"
+with open("README.md", "r", encoding='utf-8') as r:
+    long_desc = r.read()
 setup(
-    name="common_utils",       # Name of your package
-    version="0.1.0",           # Version of your package
+    name="terminus_utils",       # Name of your package
+    version=VERSION,           # Version of your package
     description="A common utility library for Python",
     author="Prashant Yadav",
     author_email="prashant.yadav@terminus.com",
     packages=find_packages(),
-    python_requires='>=3.8',
+    long_description=long_desc,
+    long_description_content_type="text/markdown",
+    url="https://github.com/prashant-yadav-dev/terminus_utils",
+    install_requires=[
+        # List your package dependencies here
+        # e.g., 'requests>=2.24.0', 'numpy>=1.18.5'
+    ],
+    classifiers=[
+        "Programming Language :: Python :: 3",  # Python versions supported
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "License :: OSI Approved :: MIT License",  # License type
+        "Operating System :: OS Independent",  # OS compatibility
+    ],
+    python_requires='>=3.8',  # Minimum Python version required
+    keywords="utilities, python, common utilities",
+
 )

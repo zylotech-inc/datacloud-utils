@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from utils.api_utils import (
+from terminus_utils.api_utils import (
     get_clean_website,
     prepare_search_url,
     transform_employee_revenue_value
