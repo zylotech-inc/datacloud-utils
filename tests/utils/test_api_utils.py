@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from utils.api_utils import (
+from terminus_utils.api_utils import (
     get_clean_website,
     prepare_search_url,
     transform_employee_revenue_value
@@ -39,42 +39,42 @@ class TestGetCleanWebsite(unittest.TestCase):
 
 class TestPrepareSearchUrl(unittest.TestCase):
 
-    @patch('utils.api_utils.get_clean_website')
+    @patch('terminus_utils.api_utils.get_clean_website')
     def test_prepare_search_url_owler(self, mock_get_clean_website):
         mock_get_clean_website.return_value = "example.com"
         result = prepare_search_url("example.com", "owler.com")
         expected = "https://www.google.com/search?q=owler.com+%2B+%22example.com%22"
         self.assertEqual(result, expected)
 
-    @patch('utils.api_utils.get_clean_website')
+    @patch('terminus_utils.api_utils.get_clean_website')
     def test_prepare_search_url_cbinsights(self, mock_get_clean_website):
         mock_get_clean_website.return_value = "example.com"
         result = prepare_search_url("example.com", "cbinsights.com")
         expected = "https://www.google.com/search?q=site%3Acbinsights.com+AND+%22example.com%22"
         self.assertEqual(result, expected)
 
-    @patch('utils.api_utils.get_clean_website')
+    @patch('terminus_utils.api_utils.get_clean_website')
     def test_prepare_search_url_rocketreach(self, mock_get_clean_website):
         mock_get_clean_website.return_value = "example.com"
         result = prepare_search_url("example.com", "rocketreach.co")
         expected = "https://www.google.com/search?q=site%3A+rocketreach.co+%2B+%22example.com%22+%22+%2B+revenue%22"
         self.assertEqual(result, expected)
 
-    @patch('utils.api_utils.get_clean_website')
+    @patch('terminus_utils.api_utils.get_clean_website')
     def test_prepare_search_url_other_source(self, mock_get_clean_website):
         mock_get_clean_website.return_value = "example.com"
         result = prepare_search_url("example.com", "othersource.com")
         expected = "https://www.google.com/search?q=+%22example.com%22+othersource.com"
         self.assertEqual(result, expected)
 
-    @patch('utils.api_utils.get_clean_website')
+    @patch('terminus_utils.api_utils.get_clean_website')
     def test_prepare_search_url_empty_domain(self, mock_get_clean_website):
         mock_get_clean_website.return_value = ""
         result = prepare_search_url("", "owler.com")
         expected = "https://www.google.com/search?q=owler.com+%2B+%22%22"
         self.assertEqual(result, expected)
 
-    @patch('utils.api_utils.get_clean_website')
+    @patch('terminus_utils.api_utils.get_clean_website')
     def test_prepare_search_url_special_characters(self, mock_get_clean_website):
         mock_get_clean_website.return_value = "example!@#$%^&*.com"
         result = prepare_search_url("example!@#$%^&*.com", "aeroleads.com")
