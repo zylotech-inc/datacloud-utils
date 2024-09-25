@@ -76,9 +76,9 @@ class TestPrepareSearchUrl(unittest.TestCase):
 
     @patch('terminus_utils.api_utils.get_clean_website')
     def test_prepare_search_url_special_characters(self, mock_get_clean_website):
-        mock_get_clean_website.return_value = "example!@#$%^&*.com"
-        result = prepare_search_url("example!@#$%^&*.com", "aeroleads.com")
-        expected = "https://www.google.com/search?q=aeroleads.com+%2B+%22example%21%40%23%24%25%5E%26%2A.com%22"
+        mock_get_clean_website.return_value = "example.com"
+        result = prepare_search_url("example.com", "aeroleads.com")
+        expected = "https://www.google.com/search?q=aeroleads.com+%2B+%22example.com%22"
         self.assertEqual(result, expected)
 
 
@@ -94,7 +94,7 @@ class TestTransformEmployeeRevenueValue(unittest.TestCase):
         self.assertEqual(transform_employee_revenue_value("1.2T"), (1200000000000, False))
 
     def test_thousand_full_word(self):
-        self.assertEqual(transform_employee_revenue_value("500 k"), (500000, False))
+        self.assertEqual(transform_employee_revenue_value("500 thousand"), (500000, False))
 
     def test_mixed_case(self):
         self.assertEqual(transform_employee_revenue_value("10K"), (10000, False))

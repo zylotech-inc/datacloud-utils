@@ -67,17 +67,14 @@ def transform_employee_revenue_value(input_str):
                 elif 'billion' in value_str or 'b' in value_str:
                     return float(value_str.replace('billion', '').replace('b', '')
                                  .replace('$', '').strip()) * 1_000_000_000
+                elif 'k' in value_str or 'thousand' in value_str:
+                    return float(
+                        value_str.replace('k', '').replace(
+                            'thousand', '').replace('$', '').strip()) * 1_000
                 elif 'trillion' in value_str or 't' in value_str:
                     return float(
-                        value_str.replace(
-                            'trillion',
-                            '').replace(
-                            't',
-                            '').replace(
-                            '$',
-                            '').strip()) * 1_000_000_000_000
-                elif 'k' in value_str or 'thousand' in value_str:
-                    return float(value_str.replace('k', '').replace('thousand', '').replace('$', '').strip()) * 1_000
+                        value_str.replace('trillion', '').replace(
+                            't', '').replace('$', '').strip()) * 1_000_000_000_000
                 else:
                     return float(value_str.replace('$', '').strip())
             if '-' in input_str:
