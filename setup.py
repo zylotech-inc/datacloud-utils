@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-VERSION = "0.1.1"
+VERSION = "0.2.0"
 with open("README.md", "r", encoding='utf-8') as r:
     long_desc = r.read()
 setup(
@@ -26,6 +26,6 @@ setup(
         "Operating System :: OS Independent",  # OS compatibility
     ],
     python_requires='>=3.8',  # Minimum Python version required
-    keywords="utilities, python, common utilities",
+    keywords="utilities, python, common_utilities",
 
 )
