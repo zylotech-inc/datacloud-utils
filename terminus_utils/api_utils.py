@@ -1,4 +1,6 @@
+import re
 from urllib.parse import urlencode, urlparse, urlunparse
+
 
 
 def get_clean_website(text: str) -> str:
@@ -46,10 +48,12 @@ def prepare_search_url(text: str, source: str):
 def transform_employee_revenue_value(input_str):
     """
     Transforms a string into an absolute number.
-    Handles cases with '<', '>', 'k', 'b', 't', 'M', and ranges like '100K-5.0M'.
+    Handles cases with '<', '>', 'k', 'b', 't', 'M', 'Thousand', and ranges
+    like '100K-5.0M' or '$5-10M'.
 
     Args:
-        input_str (str): The revenue string (e.g., "$5 M", "<5 million", ">5 million", "10k", "5b", "20-50t", "100K-5.0M").
+        input_str (str): The revenue string (e.g., "$5M", "<5 million", ">5 million",
+        "10k", "5b", "20-50t", "100K-5.0M", "$5-10M", "500 Thousand").
 
     Returns:
         tuple: A tuple containing the absolute number and a boolean inferred flag.
@@ -59,39 +63,57 @@ def transform_employee_revenue_value(input_str):
             inferred_value = False
             input_str = input_str.lower().replace(',', '').strip()
 
-            def convert_value(value_str):
+            def convert_value(value_str, suffix):
                 """Helper function to convert individual string values to absolute numbers."""
-                if 'million' in value_str or 'm' in value_str:
+                if 'k' in suffix or 'thousand' in value_str:
+                    return float(value_str.replace('k', '').replace('thousand', '')
+                                 .replace('$', '').strip()) * 1_000
+                elif 'm' in suffix or 'million' in value_str:
                     return float(value_str.replace('million', '').replace('m', '')
                                  .replace('$', '').strip()) * 1_000_000
-                elif 'billion' in value_str or 'b' in value_str:
+                elif 'b' in suffix or 'billion' in value_str:
                     return float(value_str.replace('billion', '').replace('b', '')
                                  .replace('$', '').strip()) * 1_000_000_000
-                elif 'k' in value_str or 'thousand' in value_str:
-                    return float(
-                        value_str.replace('k', '').replace(
-                            'thousand', '').replace('$', '').strip()) * 1_000
-                elif 'trillion' in value_str or 't' in value_str:
-                    return float(
-                        value_str.replace('trillion', '').replace(
-                            't', '').replace('$', '').strip()) * 1_000_000_000_000
+                elif 't' in suffix or 'trillion' in value_str:
+                    return float(value_str.replace('trillion', '').replace('t', '')
+                                 .replace('$', '').strip()) * 1_000_000_000_000
                 else:
                     return float(value_str.replace('$', '').strip())
+
+            def split_value_parts(input_value):
+                """Helper function to split individual string values."""
+                match = re.match(r"\$?(\d+(\.\d+)?)([kKmMbBtT]?)\s*-\s*\$?(\d+(\.\d+)?)([kKmMbBtT]?)", input_value)
+                if match:
+                    a = match.group(1)
+                    suffix_a = match.group(3)
+                    b = match.group(4)
+                    suffix_b = match.group(6)
+                    return a, b, suffix_a, suffix_b
+                return None, None, None, None
+            
             if '-' in input_str:
-                lower, upper = input_str.replace('$', '').split('-')
-                lower_value = convert_value(lower.strip())
-                upper_value = convert_value(upper.strip())
-                output_str = (lower_value + upper_value) / 2
+                lower, upper, suffix_a, suffix_b = split_value_parts(input_str)
+                if lower is None or upper is None:
+                    return None, False
+                if suffix_a and suffix_b:
+                    lower_value = convert_value(lower + suffix_a, suffix_a)
+                    upper_value = convert_value(upper + suffix_b, suffix_b)
+                else:
+                    common_suffix = suffix_a if suffix_a else suffix_b
+                    lower_value = convert_value(lower + (suffix_a if suffix_a else ''), common_suffix)
+                    upper_value = convert_value(upper + (suffix_b if suffix_b else ''), common_suffix)
+                output_value = (lower_value + upper_value) / 2
                 inferred_value = True
             elif '<' in input_str or '>' in input_str:
-                value = convert_value(input_str.replace('<', '').replace('>', '').strip())
+                value = convert_value(input_str.replace('<', '').replace('>', '').strip(), input_str)
                 if '<' in input_str:
                     value /= 2
-                output_str = value
+                output_value = value
                 inferred_value = True
             else:
-                output_str = convert_value(input_str)
-            return int(output_str), inferred_value
+                output_value = convert_value(input_str, input_str)
+            return int(round(output_value)), inferred_value
         return None, None
     except (ValueError, TypeError):
         return None, False
+    
