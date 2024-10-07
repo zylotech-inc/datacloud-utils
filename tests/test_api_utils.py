@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch
-from terminus_utils.api_utils import (
-    get_clean_website,
-    prepare_search_url,
-    transform_employee_revenue_value
-)
+
+from terminus_utils.api_utils import (get_clean_website, prepare_search_url,
+                                      revenue_range_taxonomy_mapper,
+                                      transform_employee_revenue_value)
+
 
 class TestGetCleanWebsite(unittest.TestCase):
 
@@ -85,10 +85,13 @@ class TestTransformEmployeeRevenueValue(unittest.TestCase):
 
     def test_million_abbreviation(self):
         self.assertEqual(transform_employee_revenue_value("$5M"), (5_000_000, False))
+
     def test_employee_million_abbreviation(self):
         self.assertEqual(transform_employee_revenue_value("<$5M"), (250_0000, True))
+
     def test_employee_without_abbreviation(self):
         self.assertEqual(transform_employee_revenue_value("<28"), (14, True))
+
     def test_employee_with_ranges(self):
         self.assertEqual(transform_employee_revenue_value("1.0-5.0k"), (3_000, True))
 
@@ -106,6 +109,7 @@ class TestTransformEmployeeRevenueValue(unittest.TestCase):
 
     def test_range_with_different_units(self):
         self.assertEqual(transform_employee_revenue_value("5M-1.5B"), (752_500_000, True))
+
     def test_range_with_same_units(self):
         self.assertEqual(transform_employee_revenue_value("10-50M"), (30_000_000, True))
 
@@ -135,3 +139,54 @@ class TestTransformEmployeeRevenueValue(unittest.TestCase):
 
     def test_mixed_symbols_and_words(self):
         self.assertEqual(transform_employee_revenue_value(">5million"), (7500000, True))
+
+
+class TestRevenueRangeTaxonomyMapper(unittest.TestCase):
+
+    def test_revenue_below_1m(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$999_999"), "$0-$1M")
+
+    def test_revenue_exactly_1m(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$1_000_000"), "$1M-$10M")
+
+    def test_revenue_between_1m_and_10m(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$5_000_000"), "$1M-$10M")
+
+    def test_revenue_exactly_10m(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$10_000_000"), "$10M-$50M")
+
+    def test_revenue_between_50m_and_100m(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$75_000_000"), "$50M-$100M")
+
+    def test_revenue_exactly_1b(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$1_000_000_000"), ">$1B")
+
+    def test_revenue_above_1b(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$2_000_000_000"), ">$1B")
+
+    def test_revenue_with_commas(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$1,500,000"), "$1M-$10M")
+
+    def test_revenue_with_decimal(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$1.5"), "$0-$1M")
+
+    def test_revenue_with_spaces(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$100 000 001"), "$100M-$200M")
+
+    def test_revenue_range_with_k(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$25K"), "$0-$1M")
+
+    def test_revenue_zero(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("$0"), "$0-$1M")
+
+    def test_revenue_with_crore(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("200 cr"), "$10M-$50M")
+
+    def test_revenue_negative(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("-$1000000"), "")
+
+    def test_revenue_non_numeric(self):
+        self.assertEqual(revenue_range_taxonomy_mapper("invalid revenue"), "")
+
+    def test_revenue_empty_string(self):
+        self.assertEqual(revenue_range_taxonomy_mapper(""), "")

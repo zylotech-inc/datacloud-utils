@@ -1,20 +1,32 @@
 import re
 from urllib.parse import urlencode, urlparse, urlunparse
+
+from currency_converter import CurrencyConverter
+from forex_python.converter import CurrencyRates
+
 from .logger import logger
+
+currency_rates = CurrencyRates()
+currency_converter = CurrencyConverter()
 
 
 def get_clean_website(text: str) -> str:
     """
-    Get the Clean Website remove "www." or "https://" or "http://
+    Remove common prefixes from a website URL.
 
     Args:
-        raw website (str): pass the raw website
+        text (str): The raw website URL.
 
     Returns:
-       clean website (str): get the clean website
+        str: The cleaned website URL without "www.", "https://", or "http://".
+
+    Raises:
+        ValueError: If the input is not a string.
     """
-    clean_website = str(text).replace("www.", "").strip(
-    ).replace("https://", "").strip().replace("http://", "").strip()
+    clean_website = text.replace("www.",
+                                 "").replace("https://", "").replace("http://", "").strip()
+    if not isinstance(text, str):
+        raise ValueError("Input must be a string")
     return clean_website
 
 
@@ -123,3 +135,68 @@ def transform_employee_revenue_value(input_str: str):
     except (ValueError, TypeError):
         logger.exception(f"{input_str} is not a valid value.")
         return None, False
+
+
+def convert_inr_to_usd(value: str):
+    try:
+        return float(round(currency_converter.convert(value, 'INR', 'USD'), 2))  # using currency_converter
+    except Exception:
+        return float(round(currency_rates.convert('INR', 'USD', value), 2))  # using forex_python currency_converter
+
+
+def revenue_range_taxonomy_mapper(revenue: str) -> str:
+    """
+    Converts a revenue string to a standardized taxonomy label based on the revenue range.
+
+    Args:
+        revenue (str): The revenue value as a string, which may include a currency symbol,
+        numeric value, and suffix (e.g. "1.2M", "$500k", "100 million").
+
+    Returns:
+        str: The taxonomy label for the revenue range (e.g. "$0-$1M", "$1M-$10M", ">$1B").
+    """
+    try:
+        revenue = revenue.lower()
+        number = revenue.replace("$", "").replace(" ", "")
+        number = re.sub(r"[^0-9.-]", "", number).strip(".").strip()
+        suffix_multipliers = {
+            'k': 1_000,
+            'thousand': 1_000,
+            'm': 1_000_000,
+            'million': 1_000_000,
+            'b': 1_000_000_000,
+            'billion': 1_000_000_000,
+            't': 1_000_000_000_000,
+            'trillion': 1_000_000_000_000,
+            'cr': 10_000_000
+        }
+        if number:
+            if "million" in revenue or "m" in revenue:
+                number = float(number) * suffix_multipliers['m']
+            elif "billion" in revenue or "b" in revenue:
+                number = float(number) * suffix_multipliers['b']
+            elif "trillion" in revenue or "t" in revenue:
+                number = float(number) * suffix_multipliers['t']
+            elif "k" in revenue:
+                number = float(number) * suffix_multipliers['k']
+            elif "cr" in revenue:
+                number = convert_inr_to_usd(float(number) * suffix_multipliers['cr'])
+            else:
+                number = float(number)
+        # Define revenue ranges and their corresponding taxonomy labels
+        revenue_ranges = [
+            (0, 999_999, '$0-$1M'),
+            (1_000_000, 9_999_999, '$1M-$10M'),
+            (10_000_000, 49_999_999, '$10M-$50M'),
+            (50_000_000, 99_999_999, '$50M-$100M'),
+            (100_000_000, 199_999_999, '$100M-$200M'),
+            (200_000_000, 999_999_999, '$200M-$1B'),
+            (1_000_000_000, float('inf'), '>$1B')
+        ]
+        # Find the appropriate range for emp_size
+        for lower, upper, label in revenue_ranges:
+            if lower <= number <= upper:
+                return label
+    except (ValueError, TypeError):
+        logger.exception(f"{revenue} is not a valid revenue.")
+    return ''

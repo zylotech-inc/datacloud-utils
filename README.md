@@ -36,4 +36,9 @@ employee_revenue_value = transform_employee_revenue_value("10k")
 print(employee_revenue_value) # (10000,'False)
 ```
 
+```python
+from terminus_utils.api_utils import revenue_range_taxonomy_mapper
+revenue_range = revenue_range_taxonomy_mapper("$23M")
+print(revenue_range) # "$10M-$50M"
+```
 

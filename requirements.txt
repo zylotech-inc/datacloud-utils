@@ -2,3 +2,5 @@ cryptography
 pandas
 numpy
 python-dotenv
+forex-python
+CurrencyConverter
