@@ -80,6 +80,9 @@ def transform_employee_revenue_value(input_str: str):
                 if 'k' in suffix or 'thousand' in value_str:
                     return float(value_str.replace('k', '').replace('thousand', '')
                                  .replace('$', '').strip()) * 1_000
+                elif 'cr' in suffix or 'crore' in value_str:
+                    value_in_cr = float(value_str.replace('crore', '').replace('cr', '')) *10_000_000
+                    return convert_inr_to_usd(value_in_cr)
                 elif 'm' in suffix or 'million' in value_str:
                     return float(value_str.replace('million', '').replace('m', '')
                                  .replace('$', '').strip()) * 1_000_000

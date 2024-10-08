@@ -10,7 +10,7 @@ terminus_utils is a Python library that provides a collection of common utilitie
 
 To install terminus_utils, run the following command:
 ```bash
-pip install git+https://github.com/zylotech-inc/datacloud-utils.git@dev  
+pip install git+https://github.com/zylotech-inc/datacloud-utils.git@dev
 ```
 
 ## Usage

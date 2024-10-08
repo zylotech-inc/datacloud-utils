@@ -140,6 +140,15 @@ class TestTransformEmployeeRevenueValue(unittest.TestCase):
     def test_mixed_symbols_and_words(self):
         self.assertEqual(transform_employee_revenue_value(">5million"), (7500000, True))
 
+    def test_revenue_above_1b(self):
+        self.assertEqual(transform_employee_revenue_value(">1b"), (1500000000, True))
+
+    @patch('terminus_utils.api_utils.convert_inr_to_usd')
+    def test_revenue_in_crore(self, mock_convert_inr_to_usd):
+        mock_convert_inr_to_usd.return_value = 1191659
+        result = transform_employee_revenue_value("10 cr")
+        self.assertEqual(result, (1191659, False))
+
 
 class TestRevenueRangeTaxonomyMapper(unittest.TestCase):
 

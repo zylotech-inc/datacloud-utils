@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 with open("README.md", "r", encoding='utf-8') as r:
     long_desc = r.read()
 setup(
@@ -15,7 +15,7 @@ setup(
     url="https://github.com/prashant-yadav-dev/terminus_utils",
     install_requires=[
         # List your package dependencies here
-        # e.g., 'requests>=2.24.0', 'numpy>=1.18.5'
+        'forex-python', 'CurrencyConverter'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",  # Python versions supported
