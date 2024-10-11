@@ -4,8 +4,6 @@ from urllib.parse import urlencode, urlparse, urlunparse
 from currency_converter import CurrencyConverter
 from forex_python.converter import CurrencyRates
 
-from .logger import logger
-
 currency_rates = CurrencyRates()
 currency_converter = CurrencyConverter()
 
@@ -81,7 +79,7 @@ def transform_employee_revenue_value(input_str: str):
                     return float(value_str.replace('k', '').replace('thousand', '')
                                  .replace('$', '').strip()) * 1_000
                 elif 'cr' in suffix or 'crore' in value_str:
-                    value_in_cr = float(value_str.replace('crore', '').replace('cr', '')) *10_000_000
+                    value_in_cr = float(value_str.replace('crore', '').replace('cr', '')) * 10_000_000
                     return convert_inr_to_usd(value_in_cr)
                 elif 'm' in suffix or 'million' in value_str:
                     return float(value_str.replace('million', '').replace('m', '')
@@ -136,7 +134,7 @@ def transform_employee_revenue_value(input_str: str):
             return int(round(output_value)), inferred_value
         return None, None
     except (ValueError, TypeError):
-        logger.exception(f"{input_str} is not a valid value.")
+        # logger.exception(f"{input_str} is not a valid value.")
         return None, False
 
 
@@ -162,6 +160,8 @@ def revenue_range_taxonomy_mapper(revenue: str) -> str:
         revenue = revenue.lower()
         number = revenue.replace("$", "").replace(" ", "")
         number = re.sub(r"[^0-9.-]", "", number).strip(".").strip()
+        if float(number) < 0:
+            return ''
         suffix_multipliers = {
             'k': 1_000,
             'thousand': 1_000,
@@ -201,5 +201,5 @@ def revenue_range_taxonomy_mapper(revenue: str) -> str:
             if lower <= number <= upper:
                 return label
     except (ValueError, TypeError):
-        logger.exception(f"{revenue} is not a valid revenue.")
-    return ''
+        # logger.exception(f"{revenue} is not a valid revenue.")
+        return ''

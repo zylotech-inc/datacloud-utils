@@ -95,6 +95,9 @@ class TestTransformEmployeeRevenueValue(unittest.TestCase):
     def test_employee_with_ranges(self):
         self.assertEqual(transform_employee_revenue_value("1.0-5.0k"), (3_000, True))
 
+    # def test_employee_with_ranges2(self):
+    #     self.assertEqual(transform_employee_revenue_value("500-1k"), (750, True))
+
     def test_billion_abbreviation(self):
         self.assertEqual(transform_employee_revenue_value("2.5B"), (2500_000_000, False))
 
@@ -142,6 +145,9 @@ class TestTransformEmployeeRevenueValue(unittest.TestCase):
 
     def test_revenue_above_1b(self):
         self.assertEqual(transform_employee_revenue_value(">1b"), (1500000000, True))
+
+    def test_revenue_lessthan_1b(self):
+        self.assertEqual(transform_employee_revenue_value("<1b"), (500_000_000, True))
 
     @patch('terminus_utils.api_utils.convert_inr_to_usd')
     def test_revenue_in_crore(self, mock_convert_inr_to_usd):
