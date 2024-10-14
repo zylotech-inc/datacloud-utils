@@ -87,6 +87,9 @@ def transform_employee_revenue_value(input_str: str):
                 elif 't' in value_str or 'trillion' in value_str:
                     return float(value_str.replace('trillion', '').replace('t', '')
                                  .replace('$', '').strip()) * 1_000_000_000_000
+                elif 'crore' in value_str or 'cr' in value_str:
+                    number = convert_inr_to_usd(float(value_str.replace('cr','').replace('crore','')) * 10_000_000)
+                    return number
                 else:
                     return float(value_str.replace('$', '').strip())
 
@@ -101,7 +104,7 @@ def transform_employee_revenue_value(input_str: str):
                     suffix_b = match.group(6)
                     return a, b, suffix_a, suffix_b
                 return None, None, None, None
-            
+
             if '-' in input_str:
                 lower, upper, suffix_a, suffix_b = split_value_parts(input_str)
                 if lower is None or upper is None:
