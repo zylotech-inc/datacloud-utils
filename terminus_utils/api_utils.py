@@ -124,7 +124,7 @@ def transform_employee_revenue_value(input_str: str):
             elif '>' in input_str:
                 value = convert_value(input_str.replace('>', '').strip())
                 inferred_value = True
-                output_value = value * 1.5 #need to discuss
+                output_value = value + value * 0.5
             else:
                 output_value = convert_value(input_str)
             return int(round(output_value)), inferred_value
