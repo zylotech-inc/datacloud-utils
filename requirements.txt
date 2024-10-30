@@ -4,3 +4,4 @@ numpy
 python-dotenv
 forex-python
 CurrencyConverter
+bs4
