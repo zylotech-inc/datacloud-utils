@@ -1,7 +1,9 @@
-import os
-from botocore.exceptions import ClientError
-import boto3
 import json
+import os
+
+import boto3
+from botocore.exceptions import ClientError
+
 
 def get_env_variable(key, default=None):
     """Fetches an environment variable, returning a default value if not found."""
@@ -16,7 +18,7 @@ def load_env_variables_from_file(file_path):
 
 def get_zyte_secret(secret_name: str):
 
-    secret_name = "Zyte_Api_key"
+    # secret_name = "Zyte_Api_key"
     region_name = "us-east-2"
 
     # Create a Secrets Manager client
