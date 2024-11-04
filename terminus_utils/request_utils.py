@@ -10,6 +10,7 @@ from .environment_utils import get_zyte_secret
 MAX_RETRY = 5
 ADDITIONAL_JS_RETRY = 3
 
+
 # Logger setup
 logger = logging.getLogger(__name__)
 
@@ -39,10 +40,6 @@ def retry_request(attempt_request, url: str, render_js: bool = False, max_retry:
         elif status_code in [429, 503, 520]:
             logger.warning(f"Rate-limiting or server issue: {status_code}. Retrying after a delay.")
             time.sleep(random.randint(60, 90))
-            retries += 1
-            if retries == max_retry and status_code == 520:
-                logger.info(f"Retrying with browserHtml request after {max_retry} attempts")
-                return retry_request(url, is_httpresponse=False)
         
         elif status_code in [400, 401, 422]:
             logger.info(
