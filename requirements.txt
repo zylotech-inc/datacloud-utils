@@ -5,3 +5,4 @@ python-dotenv
 forex-python
 CurrencyConverter
 pydantic==1.8.2
+bs4
