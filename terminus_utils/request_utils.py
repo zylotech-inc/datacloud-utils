@@ -76,7 +76,8 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
         tuple: (html, status_code, api_response)
     """
 
-    auth = get_zyte_secret(secret_name='Zyte_Api_key').get('ZYTE_API_KEY', 'None')
+    #auth = get_zyte_secret(secret_name='Zyte_Api_key').get('ZYTE_API_KEY', 'None')
+    auth = 'c9f7efe9060d453c9ea23ccc6d006698'
     if not auth:
         logger.error("No API key provided.")
         return None, None, None
