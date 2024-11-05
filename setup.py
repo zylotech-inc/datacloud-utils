@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 with open("README.md", "r", encoding='utf-8') as r:
     long_desc = r.read()
 setup(
@@ -15,7 +15,7 @@ setup(
     url="https://github.com/prashant-yadav-dev/terminus_utils",
     install_requires=[
         # List your package dependencies here
-        'forex-python', 'CurrencyConverter','bs4'
+        'forex-python', 'CurrencyConverter', 'bs4', 'pydantic==1.8.2',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",  # Python versions supported
