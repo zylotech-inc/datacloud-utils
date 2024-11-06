@@ -1,12 +1,15 @@
 import logging
 import random
 import time
-from base64 import b64decode
-
 import requests
+import time
+import random
+import logging
+import os
+from base64 import b64decode
 from bs4 import BeautifulSoup
-
-from .environment_utils import get_zyte_secret
+from base64 import b64decode
+from .environment_utils import with_env_vars
 
 # Constants
 MAX_RETRY = 5
@@ -75,9 +78,8 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
     Returns:
         tuple: (html, status_code, api_response)
     """
-
-    #auth = get_zyte_secret(secret_name='Zyte_Api_key').get('ZYTE_API_KEY', 'None')
-    auth = 'c9f7efe9060d453c9ea23ccc6d006698'
+    
+    auth = os.getenv("ZYTE_API_KEY")
     if not auth:
         logger.error("No API key provided.")
         return None, None, None
@@ -125,8 +127,8 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
 
     return html, status_code, api_response
 
-
 # Centralized Request Handler
+@with_env_vars
 def send_request(url: str, proxy_vendor: str = 'zyte', request_type: str = 'http', render_js: bool = False):
     """
     Centralized Request Handler to streamline web requests for different scrapers.

@@ -1,6 +1,6 @@
 import json
 import os
-
+from functools import wraps
 import boto3
 from botocore.exceptions import ClientError
 
@@ -17,6 +17,37 @@ def load_env_variables_from_file(file_path):
     """Loads environment variables from a .env file."""
     from dotenv import load_dotenv  # pylint: disable=import-outside-toplevel
     load_dotenv(dotenv_path=file_path)
+
+
+def with_env_vars(func):
+    """
+    Decorator that accepts a dictionary of environment variables, sets them,
+    and then runs the decorated function.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Extract 'env_vars' from kwargs, if provided
+        env_vars = kwargs.pop('env_vars', {})
+
+        # Backup any existing environment variables that are about to be overwritten
+        original_env = {key: os.getenv(key) for key in env_vars}
+
+        # Set new environment variables
+        try:
+            for var, value in env_vars.items():
+                os.environ[var] = value
+            # Run the decorated function with the modified environment
+            result = func(*args, **kwargs)
+        finally:
+            # Restore original environment variables
+            for var, value in original_env.items():
+                if value is None:
+                    del os.environ[var]  # Remove if not originally set
+                else:
+                    os.environ[var] = value  # Restore original value
+
+        return result
+    return wrapper
 
 
 def get_zyte_secret(secret_name: str):
