@@ -1,6 +1,6 @@
 import json
 import os
-
+from functools import wraps
 import boto3
 from botocore.exceptions import ClientError
 
@@ -15,9 +15,6 @@ def load_env_variables_from_file(file_path):
     from dotenv import load_dotenv
     load_dotenv(dotenv_path=file_path)
 
-
-import os
-from functools import wraps
 
 def with_env_vars(func):
     """
