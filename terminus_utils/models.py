@@ -1,4 +1,5 @@
 import re
+from ast import literal_eval
 from datetime import date
 from typing import List, Literal, Optional, Union
 
@@ -40,6 +41,7 @@ class CompanyData(BaseModel):
     GICS: Optional[str] = Field(None, description="GICS Industry Classification Code")
     NAICS: Optional[str] = Field(None, description="NAICS Industry Classification Code")
     SIC: Optional[str] = Field(None, description="SIC Industry Classification Code")
+    DELETE_FLAG: Optional[bool] = Field(default='FALSE')
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
 
     @validator('INFERRED_REVENUE_FLAG', 'INFERRED_EMPLOYEES_FLAG', 'COMPANY_MANUAL_CURATION',
@@ -70,7 +72,7 @@ class CompanyData(BaseModel):
             raise ValueError(f"Invalid COUNTRY_CD: {country_code}. Must be a valid 2-character country code.")
         return values
 
-    @validator('Linkedin_URL', 'Facebook_URL', 'Twitter_URL',
+    @validator('LINKEDIN_URL', 'FACEBOOK_URL', 'TWITTER_URL',
                pre=True, always=True, check_fields=False)
     def validate_url(cls, v):  # pylint: disable=no-self-argument
         if v and not re.match(r'https?://', v):
@@ -92,6 +94,16 @@ class CompanyData(BaseModel):
         if isinstance(value, str):
             return date.fromisoformat(value)
         return value
+
+    @validator('SPECIALITIES_ARRAY', pre=True)
+    def parse_specialities(cls, v):  # pylint: disable=no-self-argument
+        # Parse string to list if it's in string format
+        if isinstance(v, str):
+            try:
+                v = literal_eval(v)  # Safely parse the list string to a list
+            except (ValueError, SyntaxError):
+                raise ValueError("SPECIALITIES_ARRAY must be a list in string format, e.g., ['a', 'b', 'c']")
+        return v
 
 
 class LocationData(BaseModel):
@@ -115,6 +127,7 @@ class LocationData(BaseModel):
         default='N',
         description="INFERRED_EMPLOYEES_FLAG: Y for Yes, N for No")
     MANUAL_CURATION: Optional[Literal['Y', 'N']] = Field(default='N')
+    DELETE_FLAG: Optional[bool] = Field(default='FALSE')
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
 
     @validator('INFERRED_REVENUE', 'INFERRED_EMPLOYEES', 'MANUAL_CURATION', pre=True, always=True)
@@ -162,6 +175,7 @@ class ContactData(BaseModel):
     LINKEDIN_URL: Optional[HttpUrl] = Field(None, description="LinkedIn profile URL of the contact")
     FACEBOOK_URL: Optional[HttpUrl] = Field(None, description="Facebook profile URL of the contact")
     TWITTER_URL: Optional[HttpUrl] = Field(None, description="Twitter profile URL of the contact")
+    DELETE_FLAG: Optional[bool] = Field(default='FALSE')
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
 
     @validator('MANUAL_CURATION', pre=True, always=True)
