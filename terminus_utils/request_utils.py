@@ -24,10 +24,10 @@ PROXY_PROVIDERS = {
     'zyte': 'ZyteProxyHandler',
 }
 
-headers = {'X-Crawlera-Profile': 'desktop',
-           'X-Crawlera-Cookies': 'discard',
-           'cache-control': 'max-age=0',
-           'sec-gpc': '1'}
+# headers = {'X-Crawlera-Profile': 'desktop',
+#            'X-Crawlera-Cookies': 'discard',
+#            'cache-control': 'max-age=0',
+#            'sec-gpc': '1'}
 
 
 def retry_request(attempt_request, url: str, render_js: bool = False, max_retry: int = MAX_RETRY):
@@ -96,8 +96,7 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
                 'https://api.zyte.com/v1/extract',
                 json=data,
                 auth=(auth, ""),
-                headers=headers,
-                timeout=60
+                timeout=120
             )
             status_code = api_response.status_code
             html = ""
@@ -155,6 +154,6 @@ def send_request(url: str, proxy_vendor: str = 'zyte', request_type: str = 'http
         soup = BeautifulSoup(html, features='html.parser')
         logger.info(f"Successfully processed URL: {url}")
         return [html, status_code, soup]
-
-    logger.error(f"Failed to fetch URL: {url} with status code: {status_code}")
-    return [status_code, html, None]
+    else:
+        logger.error(f"Failed to fetch URL: {url} with status code: {status_code}")
+        return [html, status_code, None]
