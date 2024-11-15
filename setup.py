@@ -15,7 +15,7 @@ setup(
     url="https://github.com/prashant-yadav-dev/terminus_utils",
     install_requires=[
         # List your package dependencies here
-        'forex-python', 'CurrencyConverter', 'bs4', 'pydantic==1.8.2','psycopg2',
+        'forex-python', 'CurrencyConverter', 'bs4', 'pydantic==1.10.13','psycopg2',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",  # Python versions supported
