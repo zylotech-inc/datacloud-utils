@@ -7,3 +7,4 @@ CurrencyConverter
 pydantic>=2
 pydantic[email]
 bs4
+psycopg2
