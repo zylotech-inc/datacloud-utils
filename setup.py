@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 with open("README.md", "r", encoding='utf-8') as r:
     long_desc = r.read()
 setup(
@@ -12,10 +12,10 @@ setup(
     packages=find_packages(),
     long_description=long_desc,
     long_description_content_type="text/markdown",
-    url="https://github.com/prashant-yadav-dev/terminus_utils",
+    url="https://github.com/zylotech-inc/datacloud-utils/tree/dev/terminus_utils",
     install_requires=[
         # List your package dependencies here
-        'forex-python', 'CurrencyConverter', 'bs4', 'pydantic==1.8.2',
+        'forex-python', 'CurrencyConverter', 'bs4', 'pydantic>=2.',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",  # Python versions supported
