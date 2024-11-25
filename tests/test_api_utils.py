@@ -205,3 +205,5 @@ class TestRevenueRangeTaxonomyMapper(unittest.TestCase):
 
     def test_revenue_empty_string(self):
         self.assertEqual(revenue_range_taxonomy_mapper(""), "")
+    def test_revenue_with_int(self):
+        self.assertEqual(revenue_range_taxonomy_mapper(243243), '$0-$1M')
