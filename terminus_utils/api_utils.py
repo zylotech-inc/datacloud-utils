@@ -88,7 +88,7 @@ def transform_employee_revenue_value(input_str: str):
                     return float(value_str.replace('trillion', '').replace('t', '')
                                  .replace('$', '').strip()) * 1_000_000_000_000
                 elif 'crore' in value_str or 'cr' in value_str:
-                    number = convert_inr_to_usd(float(value_str.replace('cr','').replace('crore','')) * 10_000_000)
+                    number = convert_inr_to_usd(float(value_str.replace('cr', '').replace('crore', '')) * 10_000_000)
                     return number
                 else:
                     return float(value_str.replace('$', '').strip())
@@ -155,7 +155,7 @@ def revenue_range_taxonomy_mapper(revenue: str) -> str:
         str: The taxonomy label for the revenue range (e.g. "$0-$1M", "$1M-$10M", ">$1B").
     """
     try:
-        revenue = revenue.lower()
+        revenue = str(revenue).lower()
         number = revenue.replace("$", "").replace(" ", "")
         number = re.sub(r"[^0-9.-]", "", number).strip(".").strip()
         if float(number) < 0:
