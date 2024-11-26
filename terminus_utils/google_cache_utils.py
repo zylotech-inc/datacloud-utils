@@ -1,3 +1,5 @@
+# from terminus_utils.google_cache_utils import check_domain_and_update_url, update_table_with_url
+# from source_automation.utils.source_util import (prepare_google_url, ingest_into_pg, conn_to_pg, fetch_from_sqs_standard, send_request)
 import logger
 import logging
 from datetime import datetime
@@ -32,15 +34,46 @@ def get_days_since_last_update(updated_at, last_used):
 
 # 
 
+# Thresholds
+CREATED_THRESHOLD_MINUTES = 3
+UPDATED_THRESHOLD_DAYS = 180
+
+
+def is_recent(datetime_obj, minutes=3):
+    """
+    Check if a datetime object is within a recent time window.
+    Args:
+        datetime_obj (datetime): The datetime object to check.
+        minutes (int): The threshold in minutes.
+    Returns:
+        bool: True if within the recent window, False otherwise.
+    """
+    if not datetime_obj:
+        return False
+    return (datetime.now() - datetime_obj) < timedelta(minutes=minutes)
+
+
+def is_older_than(datetime_obj, days=180):
+    """
+    Check if a datetime object is older than a certain number of days.
+    Args:
+        datetime_obj (datetime): The datetime object to check.
+        days (int): The threshold in days.
+    Returns:
+        bool: True if older than the threshold, False otherwise.
+    """
+    if not datetime_obj:
+        return False
+    return (datetime.now() - datetime_obj).days > days
+
+
 def check_domain_and_update_url(domain_name, data_source_id, cursor):
     """
     Check if the domain exists in domain_data_sources table and update the URL if necessary.
-
     Args:
         domain_name (str): The domain name to check.
         data_source_id (int): The data source ID to check.
         cursor (object): The database cursor to execute queries.
-
     Returns:
         dict: A dictionary containing either the source URL or the domain name, and the data_source_id (if applicable).
     """
@@ -66,45 +99,35 @@ def check_domain_and_update_url(domain_name, data_source_id, cursor):
         no_url_entries = [row for row in results if not row[1]]  # Rows without source_url
 
         # Step 1: Prioritize entries with `all_data_found = True`
-        if url_entries:
-            for row in url_entries:
-                data_source_id, source_url, created_at, updated_at, last_used, not_found, all_data_found = row
-                if all_data_found:
-                    logger.info(f"URL found with all_data_found=True for domain '{domain_name}'.")
-                    return {'source_url': source_url, 'data_source_id': data_source_id}
+        for row in url_entries:
+            data_source_id, source_url, created_at, updated_at, last_used, not_found, all_data_found = row
+            if all_data_found:
+                logger.info(f"URL found with all_data_found=True for domain '{domain_name}'.")
+                return {'source_url': source_url, 'data_source_id': data_source_id}
 
-        # Step 3: Handle entries without source URLs
-        elif no_url_entries:
-            # Check if all entries for the domain have empty source_url
-            if all(row[1] is None or row[1] == '' for row in no_url_entries):
-                # Check if the `updated_at` date is more than 180 days ago
-                for row in no_url_entries:
-                    created_at = row[2]  # Assuming created_at is the 3rd column in the result
-                    updated_at = row[3]  # Assuming updated_at is the 4th column in the result
+        # Step 2: Handle entries without source URLs
+        for row in no_url_entries:
+            data_source_id, source_url, created_at, updated_at, last_used, not_found, all_data_found = row
 
-                    # Ensure created_at is not None and is a valid datetime object
-                    if created_at:
-                        if isinstance(created_at, str):
-                            created_at = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")  # Adjust if needed
-                        
-                        # Check if the `created_at` time is less than 3 minutes ago
-                        if (datetime.now() - created_at) < timedelta(minutes=3): # TODO: change timing as per requirements
-                            logger.info(f"Domain '{domain_name}' was created within the last 3 minutes and has no source_url.")
-                            return {'source_url': domain_name}
+            # Handle `created_at` logic
+            if created_at:
+                if isinstance(created_at, str):
+                    created_at = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")  # Adjust format as needed
+                if is_recent(created_at, minutes=CREATED_THRESHOLD_MINUTES):
+                    logger.info(f"Domain '{domain_name}' was created within the last {CREATED_THRESHOLD_MINUTES} minutes and has no source_url.")
+                    return {'source_url': domain_name}
 
-                    # Handle `updated_at` logic
-                    if updated_at:
-                        if isinstance(updated_at, str):
-                            updated_at = datetime.strptime(updated_at, "%Y-%m-%d %H:%M:%S")  # Adjust if needed
-                        
-                        # Check if the `updated_at` time is more than 180 days ago
-                        if (datetime.now() - updated_at).days > 180:
-                            logger.info(f"All entries for domain '{domain_name}' have empty source_url, and 180 days have passed since last update.")
-                            return {'source_url': domain_name}
+            # Handle `updated_at` logic
+            if updated_at:
+                if isinstance(updated_at, str):
+                    updated_at = datetime.strptime(updated_at, "%Y-%m-%d %H:%M:%S")  # Adjust format as needed
+                if is_older_than(updated_at, days=UPDATED_THRESHOLD_DAYS):
+                    logger.info(f"All entries for domain '{domain_name}' have empty source_url, and {UPDATED_THRESHOLD_DAYS} days have passed since last update.")
+                    return {'source_url': domain_name}
 
-                # If `updated_at` is within 180 days, log and skip this entry
-                logger.info(f"All entries for domain '{domain_name}' have empty source_url, but updated within 180 days. Skipping.")
-                return None  # You can choose to return or handle differently here
+        # Default case: Entries without URLs, updated within the threshold
+        logger.info(f"All entries for domain '{domain_name}' have empty source_url, but updated within {UPDATED_THRESHOLD_DAYS} days. Skipping.")
+        return None
 
     except Exception as e:
         logger.error(f"Error while checking domain '{domain_name}': {e}")
@@ -190,9 +213,6 @@ def update_table_with_url(domain, url, not_found, data_source_id, cursor, connec
         print(f"Unexpected error: {e}")
         connection.rollback()  # Roll back for any other error
 
-
-import sqlite3
-import logging
 
 logger = logging.getLogger(__name__)
 
