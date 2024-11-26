@@ -3,8 +3,8 @@ from ast import literal_eval
 from datetime import date
 from typing import List, Literal, Optional, Union
 
-from pydantic import (BaseModel, EmailStr, Field, HttpUrl, root_validator,
-                      validator)
+from pydantic import (BaseModel, EmailStr, Field, HttpUrl, ValidationError,
+                      field_validator, model_validator)
 
 
 class CompanyData(BaseModel):
@@ -41,11 +41,11 @@ class CompanyData(BaseModel):
     GICS: Optional[str] = Field(None, description="GICS Industry Classification Code")
     NAICS: Optional[str] = Field(None, description="NAICS Industry Classification Code")
     SIC: Optional[str] = Field(None, description="SIC Industry Classification Code")
-    DELETE_FLAG: Optional[bool] = Field(default='FALSE')
+    DELETE_FLAG: Optional[bool] = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
 
-    @validator('INFERRED_REVENUE_FLAG', 'INFERRED_EMPLOYEES_FLAG', 'COMPANY_MANUAL_CURATION',
-               'LOCATION_MANUAL_CURATION', pre=True, always=True)
+    @field_validator('INFERRED_REVENUE_FLAG', 'INFERRED_EMPLOYEES_FLAG', 'COMPANY_MANUAL_CURATION',
+                     'LOCATION_MANUAL_CURATION', mode='before')
     def convert_bool_to_text(cls, value):  # pylint: disable=no-self-argument
         # Convert True/False strings to Y/N
         if isinstance(value, bool):
@@ -57,14 +57,16 @@ class CompanyData(BaseModel):
                 return 'N'
         return value
 
-    @validator('PRIMARY_DOMAIN')
+    @field_validator('PRIMARY_DOMAIN')
+    @classmethod
     def validate_primary_domain(cls, v):  # pylint: disable=no-self-argument
         domain_pattern = r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(domain_pattern, v):
             raise ValueError('Invalid PRIMARY_DOMAIN format')
         return v
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def validate_country_code(cls, values):
         country_code = values.get('COUNTRY_CD')
         valid_country_codes = values.get('valid_country_codes', [])
@@ -72,14 +74,14 @@ class CompanyData(BaseModel):
             raise ValueError(f"Invalid COUNTRY_CD: {country_code}. Must be a valid 2-character country code.")
         return values
 
-    @validator('LINKEDIN_URL', 'FACEBOOK_URL', 'TWITTER_URL',
-               pre=True, always=True, check_fields=False)
+    @field_validator('LINKEDIN_URL', 'FACEBOOK_URL', 'TWITTER_URL', check_fields=False)
     def validate_url(cls, v):  # pylint: disable=no-self-argument
         if v and not re.match(r'https?://', v):
             raise ValueError(f"Invalid URL: {v}")
         return v
 
-    @validator('ALTERNATE_DOMAIN', pre=True)
+    @field_validator('ALTERNATE_DOMAIN', mode="before")
+    @classmethod
     def validate_alternate_domains(cls, v):  # pylint: disable=no-self-argument
         if v:
             domains = v.split(',')
@@ -89,13 +91,14 @@ class CompanyData(BaseModel):
                     raise ValueError(f"Invalid domain in ALTERNATE_DOMAIN: {domain}")
         return v
 
-    @validator('DELIVERY_DATE', pre=True, always=True)
+    @field_validator('DELIVERY_DATE', mode='after')
     def parse_date(cls, value):  # pylint: disable=no-self-argument
         if isinstance(value, str):
             return date.fromisoformat(value)
         return value
 
-    @validator('SPECIALITIES_ARRAY', pre=True)
+    @field_validator('SPECIALITIES_ARRAY', mode="before")
+    @classmethod
     def parse_specialities(cls, v):  # pylint: disable=no-self-argument
         # Parse string to list if it's in string format
         if isinstance(v, str):
@@ -127,10 +130,10 @@ class LocationData(BaseModel):
         default='N',
         description="INFERRED_EMPLOYEES_FLAG: Y for Yes, N for No")
     MANUAL_CURATION: Optional[Literal['Y', 'N']] = Field(default='N')
-    DELETE_FLAG: Optional[bool] = Field(default='FALSE')
+    DELETE_FLAG: Optional[bool] = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
 
-    @validator('INFERRED_REVENUE', 'INFERRED_EMPLOYEES', 'MANUAL_CURATION', pre=True, always=True)
+    @field_validator('INFERRED_REVENUE', 'INFERRED_EMPLOYEES', 'MANUAL_CURATION', mode='before')
     def convert_bool_to_text(cls, value):  # pylint: disable=no-self-argument
         if isinstance(value, bool):
             return 'Y' if value else 'N'
@@ -142,7 +145,7 @@ class LocationData(BaseModel):
                 return 'N'
         return value
 
-    @validator('DELIVERY_DATE', pre=True, always=True)
+    @field_validator('DELIVERY_DATE', mode='before')
     def parse_date(cls, value):  # pylint: disable=no-self-argument
         if isinstance(value, str):
             return date.fromisoformat(value)
@@ -175,10 +178,10 @@ class ContactData(BaseModel):
     LINKEDIN_URL: Optional[HttpUrl] = Field(None, description="LinkedIn profile URL of the contact")
     FACEBOOK_URL: Optional[HttpUrl] = Field(None, description="Facebook profile URL of the contact")
     TWITTER_URL: Optional[HttpUrl] = Field(None, description="Twitter profile URL of the contact")
-    DELETE_FLAG: Optional[bool] = Field(default='FALSE')
+    DELETE_FLAG: Optional[bool] = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
 
-    @validator('MANUAL_CURATION', pre=True, always=True)
+    @field_validator('MANUAL_CURATION', mode='after')
     def convert_bool_to_text(cls, value):  # pylint: disable=no-self-argument
         if isinstance(value, bool):
             return 'Y' if value else 'N'
@@ -190,7 +193,7 @@ class ContactData(BaseModel):
                 return 'N'
         return value
 
-    @validator('DELIVERY_DATE', pre=True, always=True)
+    @field_validator('DELIVERY_DATE', mode='before')
     def parse_date(cls, value):  # pylint: disable=no-self-argument
         if isinstance(value, str):
             return date.fromisoformat(value)
@@ -230,18 +233,22 @@ if __name__ == '__main__':
     record = {
         'PRIMARY_DOMAIN': 'terminus.com', 'COMPANY_ID': None, 'NAME': 'terminus', 'DBA_NAME': None,
         'COMPANY_TYPE': None, 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness', 'REVENUE': '14500000.0',
-        'INFERRED_REVENUE_FLAG': 'N', 'EMPLOYEES': '24', 'INFERRED_EMPLOYEES_FLAG': True,
+        'INFERRED_REVENUE_FLAG': 'No', 'EMPLOYEES': '24', 'INFERRED_EMPLOYEES_FLAG': 'False',
         'SPECIALITIES_ARRAY': ["a", "b", "c"],
         'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN (comma separated)': None, 'COMPANY_DESCRIPTION': None,
         'LOCATION_ID': None, 'COUNTRY_CD': 'AD', 'ADDRESS_LINE1': '32 10 St Ds', 'ADDRESS_LINE2': None,
         'CITY': 'Les Escaldes', 'COUNTY': None, 'STATE_PROVINCE': 'Escaldes-Engordany', 'POSTAL_CD': 'AD700',
-        'PHONE': '+376 800999', 'LOCATION_MANUAL_CURATION': 'N',
+        'PHONE': '+376 800999', 'LOCATION_MANUAL_CURATION': 'YES',
         'Linkedin_URL': 'https://www.linkedin.com/company/caldea', 'Facebook_URL': None, 'Twitter_URL': None,
-        'GICS': None, 'NAICS': '721', 'SIC': '7011', 'DELIVERY_DATE': '2024-10-23'
+        'GICS': None, 'NAICS': '721', 'SIC': '7011', 'DELETE_FLAG': 'FALSE', 'DELIVERY_DATE': '2024-10-23'
     }
 
     try:
         validated_record = comp_validator.create_company_data(record)
-        print(validated_record.dict())
+        print(validated_record.model_dump())
+        print('##########')
+        print(validated_record.model_dump_json())
+    except ValidationError as verror:
+        print('Unable to validate the fields:', str(verror))
     except ValueError as e:
         print(e)

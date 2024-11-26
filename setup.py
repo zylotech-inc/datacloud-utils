@@ -12,10 +12,10 @@ setup(
     packages=find_packages(),
     long_description=long_desc,
     long_description_content_type="text/markdown",
-    url="https://github.com/prashant-yadav-dev/terminus_utils",
+    url="https://github.com/zylotech-inc/datacloud-utils/tree/dev/terminus_utils",
     install_requires=[
         # List your package dependencies here
-        'forex-python', 'CurrencyConverter', 'bs4', 'pydantic==1.8.2','psycopg2',
+        'forex-python', 'CurrencyConverter', 'bs4', 'pydantic>=2', 'psycopg2',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",  # Python versions supported
