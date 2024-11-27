@@ -1,3 +1,4 @@
+# from source_automation.utils.logger import logger
 # from terminus_utils.google_cache_utils import check_domain_and_update_url, update_table_with_url
 # from source_automation.utils.source_util import (prepare_google_url, ingest_into_pg, conn_to_pg, fetch_from_sqs_standard, send_request)
 import logger
@@ -8,7 +9,7 @@ from datetime import datetime
 from datetime import datetime, timedelta
 
 
-def get_days_since_last_update(updated_at, last_used):
+def get_days_since_last_update(updated_at):
     """
     Calculate the number of days since the last update.
 
@@ -22,17 +23,10 @@ def get_days_since_last_update(updated_at, last_used):
     # Ensure updated_at and last_used are datetime objects
     if isinstance(updated_at, str):
         updated_at = datetime.strptime(updated_at, "%Y-%m-%d")
-    if isinstance(last_used, str):
-        last_used = datetime.strptime(last_used, "%Y-%m-%d")
-
-    # Use the most recent date
-    most_recent_date = max(updated_at, last_used) if last_used else updated_at
-
+    
     # Calculate the number of days since the most recent date
-    days_since_update = (datetime.now() - most_recent_date).days
+    days_since_update = (datetime.now() - updated_at).days
     return days_since_update
-
-# 
 
 # Thresholds
 CREATED_THRESHOLD_MINUTES = 3
@@ -80,7 +74,7 @@ def check_domain_and_update_url(domain_name, data_source_id, cursor):
     try:
         # Query the database for domain info from domain_data_sources
         cursor.execute("""
-            SELECT data_source_id, source_url, created_at, updated_at, last_used, not_found, all_data_found 
+            SELECT data_source_id, source_url, created_at, updated_at, all_data_found 
             FROM domain_data_sources 
             WHERE domain_name = %s
         """, (domain_name,))
@@ -100,14 +94,14 @@ def check_domain_and_update_url(domain_name, data_source_id, cursor):
 
         # Step 1: Prioritize entries with `all_data_found = True`
         for row in url_entries:
-            data_source_id, source_url, created_at, updated_at, last_used, not_found, all_data_found = row
+            data_source_id, source_url, created_at, updated_at, all_data_found = row
             if all_data_found:
                 logger.info(f"URL found with all_data_found=True for domain '{domain_name}'.")
                 return {'source_url': source_url, 'data_source_id': data_source_id}
 
         # Step 2: Handle entries without source URLs
         for row in no_url_entries:
-            data_source_id, source_url, created_at, updated_at, last_used, not_found, all_data_found = row
+            data_source_id, source_url, created_at, updated_at, all_data_found = row
 
             # Handle `created_at` logic
             if created_at:
@@ -152,7 +146,7 @@ def update_table_with_url(domain, url, not_found, data_source_id, cursor, connec
     try:
         # Check if the domain and data_source_id combination exists
         cursor.execute("""
-            SELECT source_url, last_used, not_found, updated_at 
+            SELECT source_url, updated_at 
             FROM domain_data_sources 
             WHERE domain_name = %s AND data_source_id = %s
         """, (domain, data_source_id))
@@ -160,7 +154,7 @@ def update_table_with_url(domain, url, not_found, data_source_id, cursor, connec
 
         if result:
             # Unpack the result
-            existing_url, last_used_timestamp, existing_not_found, updated_at = result
+            existing_url, updated_at = result
             
             # Calculate days since last update
             days_since_update = (current_timestamp - updated_at).days if updated_at else float('inf')
@@ -183,6 +177,17 @@ def update_table_with_url(domain, url, not_found, data_source_id, cursor, connec
                 WHERE domain_name = %s AND data_source_id = %s
                 """
                 cursor.execute(query, (current_timestamp, domain, data_source_id))
+
+            elif days_since_update > 180:
+                # If `updated_at` is older than 180 days, update `source_url`, `last_used`, and `updated_at`
+                print(f"Domain {domain} is older than 180 days. Updating source_url, last_used, and updated_at.")
+                query = """
+                UPDATE domain_data_sources 
+                SET source_url = %s, last_used = %s, updated_at = %s 
+                WHERE domain_name = %s AND data_source_id = %s
+                """
+                cursor.execute(query, (url, current_timestamp, current_timestamp, domain, data_source_id))
+
             else:
                 # Update the not_found status or any other relevant details
                 print(f"Domain {domain} exists but conditions for update are not met.")
