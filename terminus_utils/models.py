@@ -43,6 +43,8 @@ class CompanyData(BaseModel):
     SIC: Optional[str] = Field(None, description="SIC Industry Classification Code")
     DELETE_FLAG: Optional[bool] = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
+    SOURCE_CD: str = Field(default='MANUAL', description="Source Code")
+    STAGE_ID: str = Field(..., description="Stage ID with primary_domain and file_name")
 
     @field_validator('INFERRED_REVENUE_FLAG', 'INFERRED_EMPLOYEES_FLAG', 'COMPANY_MANUAL_CURATION',
                      'LOCATION_MANUAL_CURATION', mode='before')
@@ -132,6 +134,8 @@ class LocationData(BaseModel):
     MANUAL_CURATION: Optional[Literal['Y', 'N']] = Field(default='N')
     DELETE_FLAG: Optional[bool] = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
+    SOURCE_CD: str = Field(default='MANUAL', description="Source Code")
+    STAGE_ID: str = Field(..., description="Stage ID with primary_domain and file_name")
 
     @field_validator('INFERRED_REVENUE', 'INFERRED_EMPLOYEES', 'MANUAL_CURATION', mode='before')
     def convert_bool_to_text(cls, value):  # pylint: disable=no-self-argument
@@ -180,6 +184,8 @@ class ContactData(BaseModel):
     TWITTER_URL: Optional[HttpUrl] = Field(None, description="Twitter profile URL of the contact")
     DELETE_FLAG: Optional[bool] = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
+    SOURCE_CD: str = Field(default='MANUAL', description="Source Code")
+    STAGE_ID: str = Field(..., description="Stage ID with primary_domain and file_name")
 
     @field_validator('MANUAL_CURATION', mode='after')
     def convert_bool_to_text(cls, value):  # pylint: disable=no-self-argument
@@ -231,6 +237,7 @@ if __name__ == '__main__':
     comp_validator.get_country_code = valid_country_codes_from_s3
 
     record = {
+        'STAGE_ID': '1234567890', 'SOURCE_CD': 'MANUAL',
         'PRIMARY_DOMAIN': 'terminus.com', 'COMPANY_ID': None, 'NAME': 'terminus', 'DBA_NAME': None,
         'COMPANY_TYPE': None, 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness', 'REVENUE': '14500000.0',
         'INFERRED_REVENUE_FLAG': 'No', 'EMPLOYEES': '24', 'INFERRED_EMPLOYEES_FLAG': 'False',
@@ -245,8 +252,9 @@ if __name__ == '__main__':
 
     try:
         validated_record = comp_validator.create_company_data(record)
+        print('########## MODEL DUMP ##########')
         print(validated_record.model_dump())
-        print('##########')
+        print('########## JSON DUMP ##########')
         print(validated_record.model_dump_json())
     except ValidationError as verror:
         print('Unable to validate the fields:', str(verror))
