@@ -1,6 +1,3 @@
-# from source_automation.utils.logger import logger
-# from terminus_utils.google_cache_utils import check_domain_and_update_url, update_table_with_url
-# from source_automation.utils.source_util import (prepare_google_url, ingest_into_pg, conn_to_pg, fetch_from_sqs_standard, send_request)
 import logger
 import logging
 from datetime import datetime
