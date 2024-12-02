@@ -1,7 +1,6 @@
 import re
-from ast import literal_eval
 from datetime import date
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional
 
 from pydantic import (BaseModel, EmailStr, Field, HttpUrl, ValidationError,
                       field_validator, model_validator)
@@ -16,7 +15,7 @@ class CompanyData(BaseModel):
     COMPANY_TYPE: Optional[str] = Field(None, description="Type of the company HQ/BR")
     PRIMARY_INDUSTRY: Optional[str] = Field(
         None, description="Primary industry of the company eg Professional Services")
-    REVENUE: Optional[Union[float, int]] = Field(default=None, description="Total revenue of the company")
+    REVENUE: Optional[int] = Field(default=None, description="Total revenue of the company")
     INFERRED_REVENUE_FLAG: Optional[Literal['Y', 'N']] = Field(default='N')
     EMPLOYEES: Optional[int] = Field(None, description="Number of employees of the company")
     INFERRED_EMPLOYEES_FLAG: Optional[Literal['Y', 'N']] = Field(default='N')
@@ -44,7 +43,17 @@ class CompanyData(BaseModel):
     DELETE_FLAG: Optional[bool] = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
     SOURCE_CD: str = Field(default='MANUAL', description="Source Code")
-    STAGE_ID: str = Field(..., description="Stage ID with primary_domain and file_name")
+    SOURCE_ID: str = Field(..., description="SOURCE_ID with primary_domain and file_name")
+
+    @field_validator("REVENUE", "EMPLOYEES", mode="before")
+    def parse_int_field(cls, value):
+        if isinstance(value, float) or isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                print(f"Value {value} is not a valid integer")
+                return None
+        return value
 
     @field_validator('INFERRED_REVENUE_FLAG', 'INFERRED_EMPLOYEES_FLAG', 'COMPANY_MANUAL_CURATION',
                      'LOCATION_MANUAL_CURATION', mode='before')
@@ -57,6 +66,8 @@ class CompanyData(BaseModel):
                 return 'Y'
             elif value.strip().upper() in {'N', 'FALSE', 'NO'}:
                 return 'N'
+        if value in (None, ''):
+            return 'N'
         return value
 
     @field_validator('PRIMARY_DOMAIN')
@@ -82,21 +93,23 @@ class CompanyData(BaseModel):
             raise ValueError(f"Invalid URL: {v}")
         return v
 
-    @field_validator('ALTERNATE_DOMAIN', mode="before")
-    @classmethod
-    def validate_alternate_domains(cls, v):  # pylint: disable=no-self-argument
-        if v:
-            domains = v.split(',')
-            domain_pattern = r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-            for domain in domains:
-                if not re.match(domain_pattern, domain.strip()):
-                    raise ValueError(f"Invalid domain in ALTERNATE_DOMAIN: {domain}")
-        return v
+    # @field_validator('ALTERNATE_DOMAIN', mode="before")
+    # @classmethod
+    # def validate_alternate_domains(cls, v):  # pylint: disable=no-self-argument
+    #     if v:
+    #         domains = v.split(',')
+    #         domain_pattern = r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    #         for domain in domains:
+    #             if not re.match(domain_pattern, domain.strip()):
+    #                 raise ValueError(f"Invalid domain in ALTERNATE_DOMAIN: {domain}")
+    #     return v
 
     @field_validator('DELIVERY_DATE', mode='after')
     def parse_date(cls, value):  # pylint: disable=no-self-argument
         if isinstance(value, str):
-            return date.fromisoformat(value)
+            value = date.fromisoformat(value)
+        if isinstance(value, date):
+            return value.strftime('%Y-%m-%d')
         return value
 
     @field_validator('SPECIALITIES_ARRAY', mode="before")
@@ -124,7 +137,7 @@ class LocationData(BaseModel):
     STATE_PROVINCE: Optional[str] = Field(None, description="Company Branch State")
     POSTAL_CD: Optional[str] = Field(None, description="Company Branch Zip Code")
     PHONE: Optional[str] = Field(None, description="Company Branch Phone Number")
-    REVENUE: Optional[Union[float, int]] = Field(None, description="Revenue of Branch in numeric format")
+    REVENUE: Optional[int] = Field(None, description="Revenue of Branch in numeric format")
     INFERRED_REVENUE: Optional[Literal['Y', 'N']] = Field(
         default='N', description="INFERRED_REVNEUE_FLAG: Y for Yes, N for No")
     EMPLOYEES: Optional[int] = Field(None, description="Employee of Branch")
@@ -135,7 +148,13 @@ class LocationData(BaseModel):
     DELETE_FLAG: Optional[bool] = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
     SOURCE_CD: str = Field(default='MANUAL', description="Source Code")
-    STAGE_ID: str = Field(..., description="Stage ID with primary_domain and file_name")
+    SOURCE_ID: str = Field(..., description="Stage ID with primary_domain and file_name")
+
+    @field_validator("REVENUE", "EMPLOYEES", mode="before")
+    def parse_int_field(cls, value):
+        if isinstance(value, float) and value.is_integer():
+            return int(value)
+        return value
 
     @field_validator('INFERRED_REVENUE', 'INFERRED_EMPLOYEES', 'MANUAL_CURATION', mode='before')
     def convert_bool_to_text(cls, value):  # pylint: disable=no-self-argument
@@ -147,12 +166,16 @@ class LocationData(BaseModel):
                 return 'Y'
             elif value.strip().upper() in {'N', 'FALSE', 'NO'}:
                 return 'N'
+        if value in (None, ''):
+            return 'N'
         return value
 
-    @field_validator('DELIVERY_DATE', mode='before')
+    @field_validator('DELIVERY_DATE', mode='after')
     def parse_date(cls, value):  # pylint: disable=no-self-argument
         if isinstance(value, str):
-            return date.fromisoformat(value)
+            value = date.fromisoformat(value)
+        if isinstance(value, date):
+            return value.strftime('%Y-%m-%d')
         return value
 
 
@@ -185,7 +208,7 @@ class ContactData(BaseModel):
     DELETE_FLAG: Optional[bool] = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
     SOURCE_CD: str = Field(default='MANUAL', description="Source Code")
-    STAGE_ID: str = Field(..., description="Stage ID with primary_domain and file_name")
+    SOURCE_ID: str = Field(..., description="Stage ID with primary_domain and file_name")
 
     @field_validator('MANUAL_CURATION', mode='after')
     def convert_bool_to_text(cls, value):  # pylint: disable=no-self-argument
@@ -197,12 +220,16 @@ class ContactData(BaseModel):
                 return 'Y'
             elif value.strip().upper() in {'N', 'FALSE', 'NO'}:
                 return 'N'
+        if value in (None, ''):
+            return 'N'
         return value
 
-    @field_validator('DELIVERY_DATE', mode='before')
+    @field_validator('DELIVERY_DATE', mode='after')
     def parse_date(cls, value):  # pylint: disable=no-self-argument
         if isinstance(value, str):
-            return date.fromisoformat(value)
+            value = date.fromisoformat(value)
+        if isinstance(value, date):
+            return value.strftime('%Y-%m-%d')
         return value
 
 
@@ -237,17 +264,17 @@ if __name__ == '__main__':
     comp_validator.get_country_code = valid_country_codes_from_s3
 
     record = {
-        'STAGE_ID': '1234567890', 'SOURCE_CD': 'MANUAL',
+        'SOURCE_ID': '1234567890', 'SOURCE_CD': 'MANUAL',
         'PRIMARY_DOMAIN': 'terminus.com', 'COMPANY_ID': None, 'NAME': 'terminus', 'DBA_NAME': None,
         'COMPANY_TYPE': None, 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness', 'REVENUE': '14500000.0',
-        'INFERRED_REVENUE_FLAG': 'No', 'EMPLOYEES': '24', 'INFERRED_EMPLOYEES_FLAG': 'False',
+        'INFERRED_REVENUE_FLAG': '', 'EMPLOYEES': '24', 'INFERRED_EMPLOYEES_FLAG': 'False',
         'SPECIALITIES_ARRAY': ["a", "b", "c"],
         'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN (comma separated)': None, 'COMPANY_DESCRIPTION': None,
         'LOCATION_ID': None, 'COUNTRY_CD': 'AD', 'ADDRESS_LINE1': '32 10 St Ds', 'ADDRESS_LINE2': None,
         'CITY': 'Les Escaldes', 'COUNTY': None, 'STATE_PROVINCE': 'Escaldes-Engordany', 'POSTAL_CD': 'AD700',
         'PHONE': '+376 800999', 'LOCATION_MANUAL_CURATION': 'YES',
         'Linkedin_URL': 'https://www.linkedin.com/company/caldea', 'Facebook_URL': None, 'Twitter_URL': None,
-        'GICS': None, 'NAICS': '721', 'SIC': '7011', 'DELETE_FLAG': 'FALSE', 'DELIVERY_DATE': '2024-10-23'
+        'GICS': None, 'NAICS': '721', 'SIC': '7011', 'DELETE_FLAG': 'true', 'DELIVERY_DATE': '2024-10-23 00:00:00',
     }
 
     try:
