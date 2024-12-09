@@ -60,7 +60,7 @@ def is_older_than(datetime_obj, days=180):
 
 def check_domain_and_update_url(domain_name, data_source_id, cursor):
     """
-    Check if the domain exists in domain_data_sources table and update the URL if necessary.
+    Check if the domain exists in domain_data_sources table for google search and update the URL if necessary.
     Args:
         domain_name (str): The domain name to check.
         data_source_id (int): The data source ID to check.
@@ -81,7 +81,7 @@ def check_domain_and_update_url(domain_name, data_source_id, cursor):
         # Step 0: Handle case where no records exist for the domain
         if not results:
             logger.info(f"No entries found for domain '{domain_name}' in the database.")
-            return {'source_url': domain_name}
+            return {'domain_name': domain_name}
 
         logger.info(f"Query results for domain '{domain_name}': {results}")
 
@@ -106,7 +106,7 @@ def check_domain_and_update_url(domain_name, data_source_id, cursor):
                     created_at = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")  # Adjust format as needed
                 if is_recent(created_at, minutes=CREATED_THRESHOLD_MINUTES):
                     logger.info(f"Domain '{domain_name}' was created within the last {CREATED_THRESHOLD_MINUTES} minutes and has no source_url.")
-                    return {'source_url': domain_name}
+                    return {'domain_name': domain_name}
 
             # Handle `updated_at` logic
             if updated_at:
@@ -114,7 +114,7 @@ def check_domain_and_update_url(domain_name, data_source_id, cursor):
                     updated_at = datetime.strptime(updated_at, "%Y-%m-%d %H:%M:%S")  # Adjust format as needed
                 if is_older_than(updated_at, days=UPDATED_THRESHOLD_DAYS):
                     logger.info(f"All entries for domain '{domain_name}' have empty source_url, and {UPDATED_THRESHOLD_DAYS} days have passed since last update.")
-                    return {'source_url': domain_name}
+                    return {'domain_name': domain_name}
 
         # Default case: Entries without URLs, updated within the threshold
         logger.info(f"All entries for domain '{domain_name}' have empty source_url, but updated within {UPDATED_THRESHOLD_DAYS} days. Skipping.")
@@ -122,7 +122,7 @@ def check_domain_and_update_url(domain_name, data_source_id, cursor):
 
     except Exception as e:
         logger.error(f"Error while checking domain '{domain_name}': {e}")
-        return {'source_url': domain_name}
+        return {'domain_name': domain_name}
 
 def update_table_with_url(domain, url, not_found, data_source_id, cursor, connection):
     """
