@@ -118,7 +118,7 @@ def check_domain_and_update_url(domain_name, data_source_id, cursor):
 
         # Default case: Entries without URLs, updated within the threshold
         logger.info(f"All entries for domain '{domain_name}' have empty source_url, but updated within {UPDATED_THRESHOLD_DAYS} days. Skipping.")
-        return None
+        return {'domain_name': ''}
 
     except Exception as e:
         logger.error(f"Error while checking domain '{domain_name}': {e}")
