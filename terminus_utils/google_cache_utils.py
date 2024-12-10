@@ -58,7 +58,7 @@ def is_older_than(datetime_obj, days=180):
     return (datetime.now() - datetime_obj).days > days
 
 
-def check_domain_and_update_url(domain_name, data_source_id,conn):
+def check_domain_and_update_url(domain_name, data_source_id, conn):
     """
     Check if the domain exists in domain_data_sources table for google search and update the URL if necessary.
     Args:
@@ -125,7 +125,7 @@ def check_domain_and_update_url(domain_name, data_source_id,conn):
         logger.error(f"Error while checking domain '{domain_name}': {e}")
         return {'domain_name': domain_name}
 
-def update_table_with_url(domain, url, not_found, data_source_id,conn):
+def update_table_with_url(domain, url, not_found, data_source_id, conn):
     """
     Update the table with domain and URL information, or insert if the domain and data_source_id do not exist.
     If the URL exists, update only the `last_used` timestamp without overwriting the URL.
