@@ -26,7 +26,7 @@ def get_days_since_last_update(updated_at):
     return days_since_update
 
 # Thresholds
-CREATED_THRESHOLD_MINUTES = 2
+CREATED_THRESHOLD_MINUTES = 5
 UPDATED_THRESHOLD_DAYS = 180
 
 
