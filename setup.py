@@ -15,7 +15,7 @@ setup(
     url="https://github.com/zylotech-inc/datacloud-utils/tree/dev/terminus_utils",
     install_requires=[
         # List your package dependencies here
-        'forex-python', 'CurrencyConverter', 'bs4', 'pydantic>=2', 'psycopg2',
+        'forex-python', 'CurrencyConverter', 'bs4', 'pydantic>=2'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",  # Python versions supported
