@@ -1,23 +1,15 @@
-import logging
 import random
 import time
 import requests
-import time
-import random
-import logging
 import os
-from base64 import b64decode
 from bs4 import BeautifulSoup
 from base64 import b64decode
-from .environment_utils import with_env_vars
+from terminus_utils.environment_utils import with_env_vars
+from terminus_utils.logger import logger
 
 # Constants
 MAX_RETRY = 5
 ADDITIONAL_JS_RETRY = 3
-
-
-# Logger setup
-logger = logging.getLogger(__name__)
 
 # Add more proxy configurations here as needed
 PROXY_PROVIDERS = {

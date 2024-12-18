@@ -2,7 +2,6 @@ import re
 from ast import literal_eval
 from datetime import date
 from typing import List, Literal, Optional
-
 from pydantic import (BaseModel, EmailStr, Field, HttpUrl, ValidationError,
                       field_validator, model_validator)
 

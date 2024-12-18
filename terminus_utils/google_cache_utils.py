@@ -1,9 +1,6 @@
-import logger
-import logging
-from datetime import datetime
 import psycopg2
-from datetime import datetime
 from datetime import datetime, timedelta
+from terminus_utils.logger import logger
 
 
 def get_days_since_last_update(updated_at):
@@ -207,8 +204,6 @@ def update_table_with_url(domain, url, not_found, data_source_id, conn):
         logger.info(f"Unexpected error: {e}")
         conn.rollback()  # Roll back for any other error
 
-
-logger = logging.getLogger(__name__)
 
 def update_is_found_in_database(conn, domain_name, source_url, all_data_found):
     """
