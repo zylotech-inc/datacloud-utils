@@ -1,6 +1,5 @@
 import re
 from urllib.parse import urlencode, urlparse, urlunparse
-
 from currency_converter import CurrencyConverter
 from forex_python.converter import CurrencyRates
 
