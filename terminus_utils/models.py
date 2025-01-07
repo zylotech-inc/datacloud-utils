@@ -128,7 +128,7 @@ class LocationData(BaseModel):
     """Location data model"""
     PRIMARY_DOMAIN: str = Field(..., description="The primary domain associated with the entity")
     LOCATION_ID: Optional[str] = Field(None, description="Unique identifier for the location")
-    COUNTRY_CODE: str = Field(None, description="Company Branch Country Code")
+    COUNTRY_CD: str = Field(None, description="Company Branch Country Code")
     LOCATION_TYPE: str = Field(None, description="Branch eg.(BR,HQ)")
     ADDRESS_LINE1: Optional[str] = Field(None, description="Company Branch Street Details")
     ADDRESS_LINE2: Optional[str] = Field(None, description="Company Branch Street Details")
