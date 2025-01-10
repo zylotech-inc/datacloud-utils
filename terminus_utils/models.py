@@ -40,7 +40,7 @@ class CompanyData(BaseModel):
     GICS: Optional[str] = Field(None, description="GICS Industry Classification Code")
     NAICS: Optional[str] = Field(None, description="NAICS Industry Classification Code")
     SIC: Optional[str] = Field(None, description="SIC Industry Classification Code")
-    DELETE_FLAG: Optional[bool] = Field(default=False)
+    DELETE_FLAG: bool = Field(default=False)
     DELIVERY_DATE: date = Field(..., description="Date when the data was delivered")
     SOURCE_CD: str = Field(default='MANUAL', description="Source Code")
     SOURCE_ID: str = Field(..., description="SOURCE_ID with primary_domain and file_name")
@@ -122,6 +122,10 @@ class CompanyData(BaseModel):
             except (ValueError, SyntaxError):
                 raise ValueError("SPECIALITIES_ARRAY must be a list in string format, e.g., ['a', 'b', 'c']")
         return v
+    # Validator to enforce None is converted to False
+    @field_validator("DELETE_FLAG", mode="before")
+    def set_default_delete_flag(cls, v):
+        return v if v not in [None,''] else False
 
 
 class LocationData(BaseModel):
@@ -177,6 +181,10 @@ class LocationData(BaseModel):
         if isinstance(value, date):
             return value.strftime('%Y-%m-%d')
         return value
+    # Validator to enforce None is converted to False
+    @field_validator("DELETE_FLAG", mode="before")
+    def set_default_delete_flag(cls, v):
+        return v if v not in [None,''] else False
 
 
 class ContactData(BaseModel):
@@ -231,6 +239,10 @@ class ContactData(BaseModel):
         if isinstance(value, date):
             return value.strftime('%Y-%m-%d')
         return value
+    # Validator to enforce None is converted to False
+    @field_validator("DELETE_FLAG", mode="before")
+    def set_default_delete_flag(cls, v):
+        return v if v not in [None,''] else False
 
 
 class CompanyValidator:
@@ -274,7 +286,7 @@ if __name__ == '__main__':
         'CITY': 'Les Escaldes', 'COUNTY': None, 'STATE_PROVINCE': 'Escaldes-Engordany', 'POSTAL_CD': 'AD700',
         'PHONE': '+376 800999', 'LOCATION_MANUAL_CURATION': 'YES',
         'Linkedin_URL': 'https://www.linkedin.com/company/caldea', 'Facebook_URL': None, 'Twitter_URL': None,
-        'GICS': None, 'NAICS': '721', 'SIC': '7011', 'DELETE_FLAG': 'true', 'DELIVERY_DATE': '2024-10-23 00:00:00',
+        'GICS': None, 'NAICS': '721', 'SIC': '7011', 'DELETE_FLAG': '', 'DELIVERY_DATE': '2024-10-23 00:00:00',
     }
 
     try:
