@@ -51,8 +51,7 @@ class CompanyData(BaseModel):
             try:
                 return int(value)
             except ValueError:
-                print(f"Value {value} is not a valid integer")
-                return None
+                raise ValueError(f"Value '{value}' is not a valid integer.")
         return value
 
     @field_validator('INFERRED_REVENUE_FLAG', 'INFERRED_EMPLOYEES_FLAG', 'COMPANY_MANUAL_CURATION',
@@ -73,9 +72,10 @@ class CompanyData(BaseModel):
     @field_validator('PRIMARY_DOMAIN')
     @classmethod
     def validate_primary_domain(cls, v):  # pylint: disable=no-self-argument
-        domain_pattern = r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        global domain_pattern
+        domain_pattern = r"^(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$"
         if not re.match(domain_pattern, v):
-            raise ValueError('Invalid PRIMARY_DOMAIN format')
+            raise ValueError(f'Invalid PRIMARY_DOMAIN:"{v}" format')
         return v
 
     @model_validator(mode="before")
@@ -93,16 +93,15 @@ class CompanyData(BaseModel):
             raise ValueError(f"Invalid URL: {v}")
         return v
 
-    # @field_validator('ALTERNATE_DOMAIN', mode="before")
-    # @classmethod
-    # def validate_alternate_domains(cls, v):  # pylint: disable=no-self-argument
-    #     if v:
-    #         domains = v.split(',')
-    #         domain_pattern = r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    #         for domain in domains:
-    #             if not re.match(domain_pattern, domain.strip()):
-    #                 raise ValueError(f"Invalid domain in ALTERNATE_DOMAIN: {domain}")
-    #     return v
+    @field_validator('ALTERNATE_DOMAIN', mode="before")
+    @classmethod
+    def validate_alternate_domains(cls, v):  # pylint: disable=no-self-argument
+        if v:
+            domains = v.split(',')
+            for domain in domains:
+                if not re.match(domain_pattern, domain.strip()):
+                    raise ValueError(f"Invalid domain in ALTERNATE_DOMAIN: {domain}")
+        return v
 
     @field_validator('DELIVERY_DATE', mode='after')
     def parse_date(cls, value):  # pylint: disable=no-self-argument
@@ -278,10 +277,10 @@ if __name__ == '__main__':
     record = {
         'SOURCE_ID': '1234567890', 'SOURCE_CD': 'MANUAL',
         'PRIMARY_DOMAIN': 'terminus.com', 'COMPANY_ID': None, 'NAME': 'terminus', 'DBA_NAME': None,
-        'COMPANY_TYPE': None, 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness', 'REVENUE': '14500000.0',
-        'INFERRED_REVENUE_FLAG': '', 'EMPLOYEES': '24', 'INFERRED_EMPLOYEES_FLAG': 'False',
+        'COMPANY_TYPE': None, 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness', 'REVENUE': '>1B',
+        'INFERRED_REVENUE_FLAG': '', 'EMPLOYEES': '<1', 'INFERRED_EMPLOYEES_FLAG': 'False',
         'SPECIALITIES_ARRAY': ["a", "b", "c"],
-        'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN (comma separated)': None, 'COMPANY_DESCRIPTION': None,
+        'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN': 'terminus.com,mb.com,cisco.com', 'COMPANY_DESCRIPTION': None,
         'LOCATION_ID': None, 'COUNTRY_CD': 'AD', 'ADDRESS_LINE1': '32 10 St Ds', 'ADDRESS_LINE2': None,
         'CITY': 'Les Escaldes', 'COUNTY': None, 'STATE_PROVINCE': 'Escaldes-Engordany', 'POSTAL_CD': 'AD700',
         'PHONE': '+376 800999', 'LOCATION_MANUAL_CURATION': 'YES',
