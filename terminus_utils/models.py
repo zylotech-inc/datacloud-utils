@@ -34,9 +34,9 @@ class CompanyData(BaseModel):
     PHONE: Optional[str] = Field(None, description="Company HQ Phone Number")
     LOCATION_MANUAL_CURATION: Optional[Literal['Y', 'N']] = Field(default='N')
     ALTERNATE_DOMAIN: Optional[str] = Field(None, description="Alternate Domain of Primary")
-    LINKEDIN_URL: Optional[str] = Field(None, description="Linkedin url  of Company")
-    FACEBOOK_URL: Optional[str] = Field(None, description="Facebook url  of Company")
-    TWITTER_URL: Optional[str] = Field(None, description="Twitter url  of Company")
+    LINKEDIN_URL: Optional[str] = Field(None, description="Linkedin url of Company")
+    FACEBOOK_URL: Optional[str] = Field(None, description="Facebook url of Company")
+    TWITTER_URL: Optional[str] = Field(None, description="Twitter url of Company")
     GICS: Optional[str] = Field(None, description="GICS Industry Classification Code")
     NAICS: Optional[str] = Field(None, description="NAICS Industry Classification Code")
     SIC: Optional[str] = Field(None, description="SIC Industry Classification Code")
@@ -47,9 +47,25 @@ class CompanyData(BaseModel):
 
     @field_validator("REVENUE", "EMPLOYEES", mode="before")
     def parse_int_field(cls, value):
-        if isinstance(value, float) or isinstance(value, str):
+        if isinstance(value, float):
+            # Directly convert float to int
+            return int(value)
+        elif isinstance(value, str):
+            # Check if it's a string representation of a float or int
             try:
-                return int(value)
+                float_value = float(value)  # Convert to float first
+                return int(float_value)    # Then convert to int
+            except ValueError:
+                raise ValueError(f"Value '{value}' is not a valid integer.")
+        return value
+    
+    @field_validator("GICS", "NAICS","SIC", mode="before")
+    def parse_gics_naics_sic_field(cls, value):
+        if value in ['', None]:
+            return None
+        if isinstance(value, int) or isinstance(value, str):
+            try:
+                return str(value)
             except ValueError:
                 raise ValueError(f"Value '{value}' is not a valid integer.")
         return value
@@ -97,7 +113,7 @@ class CompanyData(BaseModel):
     @classmethod
     def validate_alternate_domains(cls, v):  # pylint: disable=no-self-argument
         if v:
-            domains = v.split(',')
+            domains = v.strip('"').split(',')
             for domain in domains:
                 if not re.match(domain_pattern, domain.strip()):
                     raise ValueError(f"Invalid domain in ALTERNATE_DOMAIN: {domain}")
@@ -277,15 +293,15 @@ if __name__ == '__main__':
     record = {
         'SOURCE_ID': '1234567890', 'SOURCE_CD': 'MANUAL',
         'PRIMARY_DOMAIN': 'terminus.com', 'COMPANY_ID': None, 'NAME': 'terminus', 'DBA_NAME': None,
-        'COMPANY_TYPE': None, 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness', 'REVENUE': '>1B',
-        'INFERRED_REVENUE_FLAG': '', 'EMPLOYEES': '<1', 'INFERRED_EMPLOYEES_FLAG': 'False',
+        'COMPANY_TYPE': None, 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness', 'REVENUE': '12323.5',
+        'INFERRED_REVENUE_FLAG': '', 'EMPLOYEES': '24.0', 'INFERRED_EMPLOYEES_FLAG': 'False',
         'SPECIALITIES_ARRAY': ["a", "b", "c"],
-        'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN': 'terminus.com,mb.com,cisco.com', 'COMPANY_DESCRIPTION': None,
+        'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN': '"awscientific.com,allworldscientific.com"', 'COMPANY_DESCRIPTION': None,
         'LOCATION_ID': None, 'COUNTRY_CD': 'AD', 'ADDRESS_LINE1': '32 10 St Ds', 'ADDRESS_LINE2': None,
         'CITY': 'Les Escaldes', 'COUNTY': None, 'STATE_PROVINCE': 'Escaldes-Engordany', 'POSTAL_CD': 'AD700',
         'PHONE': '+376 800999', 'LOCATION_MANUAL_CURATION': 'YES',
-        'Linkedin_URL': 'https://www.linkedin.com/company/caldea', 'Facebook_URL': None, 'Twitter_URL': None,
-        'GICS': None, 'NAICS': '721', 'SIC': '7011', 'DELETE_FLAG': '', 'DELIVERY_DATE': '2024-10-23 00:00:00',
+        'LINKEDIN_URL': 'https://www.linkedin.com/company/caldea', 'FACEBOOK_URL': None, 'TWITTER_URL': None,
+        'GICS': "67", 'NAICS': 7641, 'SIC': '7011', 'DELETE_FLAG': '', 'DELIVERY_DATE': '2024-10-23 00:00:00',
     }
 
     try:
