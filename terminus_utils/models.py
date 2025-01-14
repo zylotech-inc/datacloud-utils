@@ -112,6 +112,10 @@ class CompanyData(BaseModel):
     @field_validator('ALTERNATE_DOMAIN', mode="before")
     @classmethod
     def validate_alternate_domains(cls, v):  # pylint: disable=no-self-argument
+        if v.strip('"') in (None, ''):
+            return None
+        if not isinstance(v, str):
+            raise ValueError(f"Invalid ALTERNATE_DOMAIN: {v}")
         if v:
             domains = v.strip('"').split(',')
             for domain in domains:
@@ -296,12 +300,12 @@ if __name__ == '__main__':
         'COMPANY_TYPE': None, 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness', 'REVENUE': '12323.5',
         'INFERRED_REVENUE_FLAG': '', 'EMPLOYEES': '24.0', 'INFERRED_EMPLOYEES_FLAG': 'False',
         'SPECIALITIES_ARRAY': ["a", "b", "c"],
-        'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN': '"awscientific.com,allworldscientific.com"', 'COMPANY_DESCRIPTION': None,
+        'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN': '"cisco.com,terminus.com,jio.com"', 'COMPANY_DESCRIPTION': None,
         'LOCATION_ID': None, 'COUNTRY_CD': 'AD', 'ADDRESS_LINE1': '32 10 St Ds', 'ADDRESS_LINE2': None,
         'CITY': 'Les Escaldes', 'COUNTY': None, 'STATE_PROVINCE': 'Escaldes-Engordany', 'POSTAL_CD': 'AD700',
         'PHONE': '+376 800999', 'LOCATION_MANUAL_CURATION': 'YES',
         'LINKEDIN_URL': 'https://www.linkedin.com/company/caldea', 'FACEBOOK_URL': None, 'TWITTER_URL': None,
-        'GICS': "67", 'NAICS': 7641, 'SIC': '7011', 'DELETE_FLAG': '', 'DELIVERY_DATE': '2024-10-23 00:00:00',
+        'GICS': "67", 'NAICS': '', 'SIC': '7011', 'DELETE_FLAG': '', 'DELIVERY_DATE': '2024-10-23 00:00:00',
     }
 
     try:
