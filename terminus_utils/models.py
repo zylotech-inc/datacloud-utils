@@ -2,6 +2,7 @@ import re
 from ast import literal_eval
 from datetime import date
 from typing import List, Literal, Optional
+
 from pydantic import (BaseModel, EmailStr, Field, HttpUrl, ValidationError,
                       field_validator, model_validator)
 
@@ -12,14 +13,13 @@ class CompanyData(BaseModel):
     COMPANY_ID: Optional[str] = Field(None, description="Terminus Unique Account ID -(TAID) eg. TAID1124539292")
     NAME: str = Field(..., description="Name of the company")
     DBA_NAME: Optional[str] = Field(None, description="Doing business as name of the company")
-    COMPANY_TYPE: Optional[str] = Field(None, description="Type of the company HQ/BR")
+    COMPANY_TYPE: Optional[str] = Field(None, description="Type of the company HQ", max_length=2)
     PRIMARY_INDUSTRY: Optional[str] = Field(
         None, description="Primary industry of the company eg Professional Services")
     REVENUE: Optional[int] = Field(default=None, description="Total revenue of the company")
     INFERRED_REVENUE_FLAG: Optional[Literal['Y', 'N']] = Field(default='N')
     EMPLOYEES: Optional[int] = Field(None, description="Number of employees of the company")
     INFERRED_EMPLOYEES_FLAG: Optional[Literal['Y', 'N']] = Field(default='N')
-    # SPECIALITIES_ARRAY: Optional[str] = Field(None, description="Company specialty or its area of expertise")
     SPECIALITIES_ARRAY: Optional[List[str]] = Field(None, description="Company specialty or its area of expertise")
     COMPANY_MANUAL_CURATION: Optional[Literal['Y', 'N']] = Field(default='N')
     COMPANY_DESCRIPTION: Optional[str] = Field(None, description="Description of the company")
@@ -58,17 +58,15 @@ class CompanyData(BaseModel):
             except ValueError:
                 raise ValueError(f"Value '{value}' is not a valid integer.")
         return value
-    
-    @field_validator("GICS", "NAICS","SIC", mode="before")
+
+    @field_validator("GICS", "NAICS", "SIC", mode="before")
     def parse_gics_naics_sic_field(cls, value):
         if value in ['', None]:
             return None
-        if isinstance(value, int) or isinstance(value, str):
-            try:
-                return str(value)
-            except ValueError:
-                raise ValueError(f"Value '{value}' is not a valid integer.")
-        return value
+        try:
+            return str(int(float(value)))
+        except ValueError:
+            raise ValueError(f"Value '{value}' is not a valid integer.")
 
     @field_validator('INFERRED_REVENUE_FLAG', 'INFERRED_EMPLOYEES_FLAG', 'COMPANY_MANUAL_CURATION',
                      'LOCATION_MANUAL_CURATION', mode='before')
@@ -103,25 +101,56 @@ class CompanyData(BaseModel):
             raise ValueError(f"Invalid COUNTRY_CD: {country_code}. Must be a valid 2-character country code.")
         return values
 
-    @field_validator('LINKEDIN_URL', 'FACEBOOK_URL', 'TWITTER_URL', check_fields=False)
-    def validate_url(cls, v):  # pylint: disable=no-self-argument
-        if v and not re.match(r'https?://', v):
-            raise ValueError(f"Invalid URL: {v}")
-        return v
+    @field_validator('LINKEDIN_URL', 'FACEBOOK_URL', 'TWITTER_URL', check_fields=True)
+    def validate_url(cls, v, field):  # pylint: disable=no-self-argument
+        if v in [None, ""]:
+            return None
+        # Remove trailing slashes
+        v = v.rstrip('/')
+        # Extract field name to determine platform-specific rules
+        field_name = field.field_name.upper()
+
+        # LinkedIn-specific validation and normalization
+        if field_name == "LINKEDIN_URL":
+            normalized_url = re.sub(r"^(https?://)?(www\.)?(.*\.)?linkedin\.com", "linkedin.com", v)
+            if not normalized_url.startswith("linkedin.com/"):
+                raise ValueError(f"Invalid LinkedIn URL: {v}")
+            return normalized_url
+
+        # Facebook-specific validation and normalization
+        elif field_name == "FACEBOOK_URL":
+            normalized_url = re.sub(r"^(https?://)?(www\.)?facebook\.com", "facebook.com", v)
+            if not normalized_url.startswith("facebook.com/"):
+                raise ValueError(f"Invalid Facebook URL: {v}")
+            return normalized_url
+        # Twitter-specific validation and normalization
+        elif field_name == "TWITTER_URL":
+            normalized_url = re.sub(r"^(https?://)?(www\.)?twitter\.com", "twitter.com", v)
+            if not normalized_url.startswith("twitter.com/"):
+                raise ValueError(f"Invalid Twitter URL: {v}")
+            return normalized_url
+        # If the URL doesn't match any known social media platform, raise an error
+        raise ValueError(f"Unknown social media platform for URL: {v}")
 
     @field_validator('ALTERNATE_DOMAIN', mode="before")
     @classmethod
-    def validate_alternate_domains(cls, v):  # pylint: disable=no-self-argument
-        if v.strip('"') in (None, ''):
+    def validate_alternate_domains(cls, v):
+        # Ensure the input is a string or return None if it's empty
+        if not isinstance(v, str) or v.strip('"') in (None, ''):
             return None
-        if not isinstance(v, str):
-            raise ValueError(f"Invalid ALTERNATE_DOMAIN: {v}")
-        if v:
-            domains = v.strip('"').split(',')
-            for domain in domains:
-                if not re.match(domain_pattern, domain.strip()):
-                    raise ValueError(f"Invalid domain in ALTERNATE_DOMAIN: {domain}")
-        return v
+
+        # Normalize the input and initialize a set for unique domains
+        domains = v.strip('"').split(',')
+        unique_alternate_domains = set()
+
+        # Validate and collect unique domains
+        for domain in map(str.strip, domains):
+            if not re.match(domain_pattern, domain):
+                raise ValueError(f'Invalid domain in ALTERNATE_DOMAIN: "{domain}"')
+            unique_alternate_domains.add(domain)
+
+        # Return a comma-separated string of unique domains
+        return ",".join(unique_alternate_domains)
 
     @field_validator('DELIVERY_DATE', mode='after')
     def parse_date(cls, value):  # pylint: disable=no-self-argument
@@ -142,9 +171,17 @@ class CompanyData(BaseModel):
                 raise ValueError("SPECIALITIES_ARRAY must be a list in string format, e.g., ['a', 'b', 'c']")
         return v
     # Validator to enforce None is converted to False
+
     @field_validator("DELETE_FLAG", mode="before")
     def set_default_delete_flag(cls, v):
-        return v if v not in [None,''] else False
+        return v if v not in [None, ''] else False
+    
+    @field_validator("COMPANY_TYPE", mode="before")
+    def validate_location_type(cls, v):
+        # Check for None or empty string
+        if v in [None, ""]:
+            raise ValueError("COMPANY_TYPE cannot be None or empty.")
+        return v.upper()
 
 
 class LocationData(BaseModel):
@@ -152,7 +189,7 @@ class LocationData(BaseModel):
     PRIMARY_DOMAIN: str = Field(..., description="The primary domain associated with the entity")
     LOCATION_ID: Optional[str] = Field(None, description="Unique identifier for the location")
     COUNTRY_CD: str = Field(None, description="Company Branch Country Code")
-    LOCATION_TYPE: str = Field(None, description="Branch eg.(BR,HQ)")
+    LOCATION_TYPE: str = Field(None, description="Branch eg.(BR)", max_length=2)
     ADDRESS_LINE1: Optional[str] = Field(None, description="Company Branch Street Details")
     ADDRESS_LINE2: Optional[str] = Field(None, description="Company Branch Street Details")
     CITY: Optional[str] = Field(None, description="Company Branch City")
@@ -201,9 +238,20 @@ class LocationData(BaseModel):
             return value.strftime('%Y-%m-%d')
         return value
     # Validator to enforce None is converted to False
+
     @field_validator("DELETE_FLAG", mode="before")
     def set_default_delete_flag(cls, v):
-        return v if v not in [None,''] else False
+        return v if v not in [None, ''] else False
+
+    @field_validator("LOCATION_TYPE", mode="before")
+    def validate_location_type(cls, v):
+        # Check for None or empty string
+        if v in [None, ""]:
+            raise ValueError("LOCATION_TYPE cannot be None or empty.")
+        # Ensure the value is "BR" (case-insensitive)
+        if v.upper() != "BR":
+            raise ValueError(f"Value: '{v}' is not a valid location type.")
+        return v.upper()
 
 
 class ContactData(BaseModel):
@@ -259,9 +307,10 @@ class ContactData(BaseModel):
             return value.strftime('%Y-%m-%d')
         return value
     # Validator to enforce None is converted to False
+
     @field_validator("DELETE_FLAG", mode="before")
     def set_default_delete_flag(cls, v):
-        return v if v not in [None,''] else False
+        return v if v not in [None, ''] else False
 
 
 class CompanyValidator:
@@ -294,26 +343,55 @@ if __name__ == '__main__':
     comp_validator = CompanyValidator()
     comp_validator.get_country_code = valid_country_codes_from_s3
 
-    record = {
-        'SOURCE_ID': '1234567890', 'SOURCE_CD': 'MANUAL',
-        'PRIMARY_DOMAIN': 'terminus.com', 'COMPANY_ID': None, 'NAME': 'terminus', 'DBA_NAME': None,
-        'COMPANY_TYPE': None, 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness', 'REVENUE': '12323.5',
-        'INFERRED_REVENUE_FLAG': '', 'EMPLOYEES': '24.0', 'INFERRED_EMPLOYEES_FLAG': 'False',
+    comp_record = {
+        'SOURCE_ID': '1234567890', 'SOURCE_CD': 'MANUAL', 'PRIMARY_DOMAIN': 'terminus.com', 'COMPANY_ID': None,
+        'NAME': 'terminus', 'DBA_NAME': None, 'COMPANY_TYPE': 'hq', 'PRIMARY_INDUSTRY': 'Health, Wellness And Fitness',
+        'REVENUE': '12323.5', 'INFERRED_REVENUE_FLAG': '', 'EMPLOYEES': '24.0', 'INFERRED_EMPLOYEES_FLAG': 'False',
         'SPECIALITIES_ARRAY': ["a", "b", "c"],
-        'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN': '"cisco.com,terminus.com,jio.com"', 'COMPANY_DESCRIPTION': None,
-        'LOCATION_ID': None, 'COUNTRY_CD': 'AD', 'ADDRESS_LINE1': '32 10 St Ds', 'ADDRESS_LINE2': None,
-        'CITY': 'Les Escaldes', 'COUNTY': None, 'STATE_PROVINCE': 'Escaldes-Engordany', 'POSTAL_CD': 'AD700',
-        'PHONE': '+376 800999', 'LOCATION_MANUAL_CURATION': 'YES',
-        'LINKEDIN_URL': 'https://www.linkedin.com/company/caldea', 'FACEBOOK_URL': None, 'TWITTER_URL': None,
-        'GICS': "67", 'NAICS': '', 'SIC': '7011', 'DELETE_FLAG': '', 'DELIVERY_DATE': '2024-10-23 00:00:00',
+        'COMPANY_MANUAL_CURATION': 'N', 'ALTERNATE_DOMAIN': '"cisco.com,terminus.com,jio.com,cisco.com"',
+        'COMPANY_DESCRIPTION': None, 'CITY': 'Les Escaldes', 'COUNTY': None, 'STATE_PROVINCE': 'Escaldes-Engordany',
+        'POSTAL_CD': 'AD700', 'PHONE': '+376 800999', 'LOCATION_MANUAL_CURATION': 'YES',
+        'LINKEDIN_URL': 'https://www.linkedin.com/company/groupe-royer/',
+        'FACEBOOK_URL': 'http://www.facebook.com/grouperoyer', 'TWITTER_URL': 'http://www.twitter.com/grouperoyer',
+        'GICS': "67", 'NAICS': '8989.0', 'SIC': 7011.5, 'DELETE_FLAG': '', 'DELIVERY_DATE': '2025-01-17'}
+    location_record = {
+        'SOURCE_ID': '1234567890',
+        'PRIMARY_DOMAIN': 'grouperoyer.com',
+        'LOCATION_ID': '534353555',
+        'COUNTRY_CD': 'JP',
+        'LOCATION_TYPE': 'br',
+        'ADDRESS_LINE1': '1200 W Century Ave',
+        'ADDRESS_LINE2': '',
+        'CITY': 'Kyoto',
+        'COUNTY': 'Kyoto',
+        'STATE_PROVINCE': '',
+        'POSTAL_CD': '612-8457',
+        'PHONE': '+81756225091',
+        'REVENUE': '56',
+        'INFERRED_REVENUE': 'N',
+        'EMPLOYEES': '343',
+        'INFERRED_EMPLOYEES': 'N',
+        'MANUAL_CURATION': 'Y',
+        'DELIVERY_DATE': '2025-01-17'
     }
 
     try:
-        validated_record = comp_validator.create_company_data(record)
-        print('########## MODEL DUMP ##########')
-        print(validated_record.model_dump())
-        print('########## JSON DUMP ##########')
-        print(validated_record.model_dump_json())
+        comp_validated_record = comp_validator.create_company_data(comp_record)
+        print('########## COMPANY MODEL DUMP ##########')
+        print(comp_validated_record.model_dump())
+        print('########## COMPANY JSON DUMP ##########')
+        print(comp_validated_record.model_dump_json())
+    except ValidationError as verror:
+        print('Unable to validate the fields:', str(verror))
+    except ValueError as e:
+        print(e)
+    try:
+        print(location_record)
+        loc_validated_record = LocationData(**location_record)
+        print('########## LOCATION MODEL DUMP ##########')
+        print(loc_validated_record.model_dump())
+        print('########## LOCATION JSON DUMP ##########')
+        print(loc_validated_record.model_dump_json())
     except ValidationError as verror:
         print('Unable to validate the fields:', str(verror))
     except ValueError as e:
