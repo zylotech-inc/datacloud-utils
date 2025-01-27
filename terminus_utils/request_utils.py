@@ -1,15 +1,21 @@
+import os
 import random
 import time
-import requests
-import os
-from bs4 import BeautifulSoup
 from base64 import b64decode
+from uuid import uuid4
+import requests
+from bs4 import BeautifulSoup
+
 from terminus_utils.environment_utils import with_env_vars
 from terminus_utils.logger import logger
 
 # Constants
 MAX_RETRY = 5
 ADDITIONAL_JS_RETRY = 3
+API_URL = 'https://api.zyte.com/v1/extract'
+API_KEY = os.getenv("ZYTE_API_KEY")
+# Global variable to store session ID
+session_id = None
 
 # Add more proxy configurations here as needed
 PROXY_PROVIDERS = {
@@ -58,7 +64,21 @@ def retry_request(attempt_request, url: str, render_js: bool = False, max_retry:
     logger.error(f"Max retries reached for URL: {url} with render_js={render_js}")
     return html, status_code, api_response
 
+def initial_request():
+    """Sends the initial request to get a session ID."""
+    global session_id
+    # Generate new session ID
+    session_id = str(uuid4())
+    print(f"Generated session ID: {session_id}")
+    response = requests.post(API_URL, auth=(API_KEY, ""), json={
+        "url": "https://www.zoominfo.com",
+        "browserHtml": True,
+        "session": {
+            "id": session_id}
 
+    }, timeout=60)
+
+    return session_id
 def ZyteProxyHandler(url: str, render_js: bool = False):
     """
     Proxy handler for Zyte.
@@ -70,26 +90,38 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
     Returns:
         tuple: (html, status_code, api_response)
     """
-    
-    auth = os.getenv("ZYTE_API_KEY")
-    if not auth:
+
+    if not API_KEY:
         logger.error("No API key provided.")
         return None, None, None
 
     def attempt_request(url, render_js):
         try:
-            data = {
-                "url": url,
-                "browserHtml": render_js,
-                "httpResponseBody": not render_js,
-                "javascript": render_js,
-            }
-            api_response = requests.post(
-                'https://api.zyte.com/v1/extract',
-                json=data,
-                auth=(auth, ""),
-                timeout=120
-            )
+            if 'zoominfo.com' in url:
+                zoom_session_id = initial_request()  # Ensure session ID is created only once
+                if not zoom_session_id:
+                    logger.error("Unable to retrieve session ID.")
+                    return "", None, None
+                api_response = requests.post(API_URL, auth=(API_KEY, ""), json={
+                    "url": url,
+                    "httpResponseBody": True,
+                    "session": {
+                        "id": zoom_session_id
+                    }
+                }, timeout=60)
+            else:
+                data = {
+                    "url": url,
+                    "browserHtml": render_js,
+                    "httpResponseBody": not render_js,
+                    "javascript": render_js,
+                }
+                api_response = requests.post(
+                    API_URL,
+                    json=data,
+                    auth=(API_KEY, ""),
+                    timeout=120
+                )
             status_code = api_response.status_code
             html = ""
 
@@ -120,7 +152,8 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
 
 # Centralized Request Handler
 @with_env_vars
-def send_request(url: str, proxy_vendor: str = 'zyte', request_type: str = 'http', render_js: bool = False):
+def send_request(url: str, proxy_vendor: str = 'zyte', 
+                 request_type: str = 'http', render_js: bool = False):
     """
     Centralized Request Handler to streamline web requests for different scrapers.
 
