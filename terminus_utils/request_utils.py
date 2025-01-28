@@ -70,14 +70,18 @@ def initial_request():
     session_id = str(uuid4())  # Generate a new session ID
     # print(f"Generated new session ID: {session_id}")
 
-    _ = requests.post(API_URL, auth=(API_KEY, ""), json={
+    response = requests.post(API_URL, auth=(API_KEY, ""), json={
         "url": "https://www.zoominfo.com",
         "browserHtml": True,
         "session": {
             "id": session_id
         }
     }, timeout=60)
-        
+
+    if response.status_code != 200:
+        logger.error("Unable to retrieve session ID.")
+        return None
+    
     return session_id
 def ZyteProxyHandler(url: str, render_js: bool = False):
     """
@@ -97,33 +101,24 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
 
     def attempt_request(url, render_js):
         try:
+            payload = {
+                "url": url,
+                "browserHtml": render_js,
+                "httpResponseBody": not render_js,
+                "javascript": render_js,
+            }
+
+            # For ZoomInfo.com, generate a new session and add it to the payload
             if 'zoominfo.com' in url:
-                zoom_session_id = initial_request()  # Ensure session ID is created only once
-                # print(f"Generated new session ID: {session_id}")
-                if not zoom_session_id:
-                    logger.error("Unable to retrieve session ID.")
-                    return "", None, None
-                payload = {
-                    "url": url,
-                    "httpResponseBody": True,
-                    "session": {
-                        "id": zoom_session_id
-                    }
-                }
-                api_response = requests.post(API_URL, auth=(API_KEY, ""), json=payload, timeout=60)
-            else:
-                payload = {
-                    "url": url,
-                    "browserHtml": render_js,
-                    "httpResponseBody": not render_js,
-                    "javascript": render_js,
-                }
-                api_response = requests.post(
-                    API_URL,
-                    json=payload,
-                    auth=(API_KEY, ""),
-                    timeout=120
-                )
+                zoom_session_id = initial_request()                    
+                payload["session"]["id"] = zoom_session_id
+
+            api_response = requests.post(
+                API_URL,
+                json=payload,
+                auth=(API_KEY, ""),
+                timeout=120
+            )
             print("PAYLOAD:",payload)
             status_code = api_response.status_code
             html = ""
