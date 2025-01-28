@@ -110,7 +110,9 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
 
             # For ZoomInfo.com, generate a new session and add it to the payload
             if 'zoominfo.com' in url:
-                zoom_session_id = initial_request()                    
+                zoom_session_id = initial_request()
+                if 'session' not in payload:
+                    payload['session'] = {}
                 payload["session"]["id"] = zoom_session_id
 
             api_response = requests.post(
@@ -119,7 +121,6 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
                 auth=(API_KEY, ""),
                 timeout=120
             )
-            print("PAYLOAD:",payload)
             status_code = api_response.status_code
             html = ""
 
