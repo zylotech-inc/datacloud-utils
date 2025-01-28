@@ -67,17 +67,17 @@ def retry_request(attempt_request, url: str, render_js: bool = False, max_retry:
 def initial_request():
     """Sends the initial request to get a session ID."""
     global session_id
-    # Generate new session ID
-    session_id = str(uuid4())
-    print(f"Generated session ID: {session_id}")
-    response = requests.post(API_URL, auth=(API_KEY, ""), json={
+    session_id = str(uuid4())  # Generate a new session ID
+    # print(f"Generated new session ID: {session_id}")
+
+    _ = requests.post(API_URL, auth=(API_KEY, ""), json={
         "url": "https://www.zoominfo.com",
         "browserHtml": True,
         "session": {
-            "id": session_id}
-
+            "id": session_id
+        }
     }, timeout=60)
-
+        
     return session_id
 def ZyteProxyHandler(url: str, render_js: bool = False):
     """
@@ -99,18 +99,20 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
         try:
             if 'zoominfo.com' in url:
                 zoom_session_id = initial_request()  # Ensure session ID is created only once
+                # print(f"Generated new session ID: {session_id}")
                 if not zoom_session_id:
                     logger.error("Unable to retrieve session ID.")
                     return "", None, None
-                api_response = requests.post(API_URL, auth=(API_KEY, ""), json={
+                payload = {
                     "url": url,
                     "httpResponseBody": True,
                     "session": {
                         "id": zoom_session_id
                     }
-                }, timeout=60)
+                }
+                api_response = requests.post(API_URL, auth=(API_KEY, ""), json=payload, timeout=60)
             else:
-                data = {
+                payload = {
                     "url": url,
                     "browserHtml": render_js,
                     "httpResponseBody": not render_js,
@@ -118,10 +120,11 @@ def ZyteProxyHandler(url: str, render_js: bool = False):
                 }
                 api_response = requests.post(
                     API_URL,
-                    json=data,
+                    json=payload,
                     auth=(API_KEY, ""),
                     timeout=120
                 )
+            print("PAYLOAD:",payload)
             status_code = api_response.status_code
             html = ""
 
