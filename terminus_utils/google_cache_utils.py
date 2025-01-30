@@ -72,7 +72,7 @@ def check_domain_and_update_url(domain_name, data_source_id, conn):
     try:
         # Query the database for domain info from domain_data_sources
         cur.execute("""
-            SELECT data_source_id, source_url, created_at, updated_at, all_data_found 
+            SELECT data_source_id, source_url, created_at, updated_at, all_data_found, not_found
             FROM domain_data_sources 
             WHERE domain_name = %s
         """, (domain_name,))
@@ -92,15 +92,37 @@ def check_domain_and_update_url(domain_name, data_source_id, conn):
 
         # Step 1: Prioritize entries with `all_data_found = True`
         for row in url_entries:
-            data_source_id, source_url, created_at, updated_at, all_data_found = row
+            data_source_id, source_url, created_at, updated_at, all_data_found, not_found = row
+            # Step 1: Check if `all_data_found` is True
             if all_data_found:
                 logger.info(f"URL found with all_data_found=True for domain '{domain_name}'.")
                 return {'source_url': source_url, 'data_source_id': data_source_id}
-
+            
+            # Step 2: Check if `all_data_found` is None and if `created_at` is recent
+            if all_data_found is None:
+                logger.info(f"all_data_found is NULL for domain '{domain_name}', checking created_at.")
+                
+                # Check `created_at` if available
+                if created_at:
+                    # Convert `created_at` to datetime if it's a string
+                    if isinstance(created_at, str):
+                        created_at = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")  # Adjust format as needed
+                    
+                    # Check if `created_at` is recent
+                    if is_recent(created_at, minutes=CREATED_THRESHOLD_MINUTES):
+                        logger.info(f"Domain '{domain_name}' was created within the last {CREATED_THRESHOLD_MINUTES} minutes and has no source_url.")
+                        return {'domain_name': domain_name}
+                
+                    else:
+                        return {'source_url': source_url, 'data_source_id': data_source_id}
+            
+                elif all_data_found is None and not_found is False:
+                    logger.info(f"Domain '{domain_name}' has no source_url but has not_found=False.")
+                    return {'source_url': source_url, 'data_source_id': data_source_id}  
+            
         # Step 2: Handle entries without source URLs
         for row in no_url_entries:
             data_source_id, source_url, created_at, updated_at, all_data_found = row
-
             # Handle `created_at` logic
             if created_at:
                 if isinstance(created_at, str):
@@ -124,6 +146,7 @@ def check_domain_and_update_url(domain_name, data_source_id, conn):
     except Exception as e:
         logger.error(f"Error while checking domain '{domain_name}': {e}")
         return {'domain_name': domain_name}
+
 
 def update_table_with_url(domain, url, not_found, data_source_id, conn):
     """
