@@ -1,6 +1,15 @@
+from dotenv import load_dotenv  # noqa
+load_dotenv('.env')
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+from bs4 import BeautifulSoup
 from terminus_utils.api_utils import transform_employee_revenue_value
-from terminus_utils.request_utils import send_request
+from terminus_utils.scrape_utility.common_util import  (soup_find_all,soup_find, log_exception, map_raw_industry_with_croswalk_industry,
+                get_valid_url,  return_longest_code, clean_newlines,)
+from terminus_utils.logger import logger
 
+BLANK_HTML  = "<span></span>"
 
 def extract_codes(soup: BeautifulSoup):
     """
@@ -156,102 +165,121 @@ def scrape_company_info(soup: BeautifulSoup):
     try:
         company_name_elm = soup_find(soup, class_="company-name")
         company_name = company_name_elm.text if company_name_elm else None
-
         company_desc_el = soup_find(soup, id="company-description-text-content")
-        company_desc = company_desc_el.text if company_desc_el else ""
-
-        company_prod = [tech_owned.text for tech_owned in soup_find_all(soup, class_="tech-owned")]
-
+        company_desc_str = company_desc_el.text if company_desc_el else None
+        company_desc = clean_newlines(company_desc_str)
+        company_prod_list = [tech_owned.text for tech_owned in soup_find_all(soup, class_="tech-owned")]
+        company_prod = clean_newlines(company_prod_list)
         acquisition_elements = soup.find_all(class_="name-acquisition-card")
-        acquisition_subs = [acq_sub.text for acq_sub in acquisition_elements] if acquisition_elements else []
-
-        company_business_industry = ",".join([i.text.strip() for i in soup.find_all('zi-directories-chips') if i])
-        industry, terminus_industry_label, industry_status_tag = map_raw_industry_with_croswalk_industry(company_business_industry)
+        acquisition_subs = [acq_sub.text for acq_sub in acquisition_elements] if acquisition_elements else None
 
         company_employee_business_soup = soup_find(soup, class_='company-header-subtitle')
-        raw_employee_size = company_employee_business_soup.text.split('·')[-1][1:-1].replace(' Employees', '').replace(' Employee', '') if company_employee_business_soup else None
+        company_business_industry = ",".join([i.text.strip() for i in soup.find_all(
+            'zi-directories-chips') if i is not None])
+        raw_industry = company_business_industry
+        industry_list, terminus_industry_label, industry_status_tag = map_raw_industry_with_croswalk_industry(raw_industry)
+        industry = clean_newlines(industry_list) # add this for handle /n
+        raw_employee_size = company_employee_business_soup.text.split('·')[-1][1:-1].replace(
+            ' Employees', '').replace(' Employee', '') if company_employee_business_soup else None
         company_employee_size, inferred_employee_size = transform_employee_revenue_value(raw_employee_size)
-
         address_phone_ticker_list = soup_find_all(soup, class_='icon-text-container')
-        company_address = ' '.join([each.text for each in address_phone_ticker_list if "Headquarters" in each.text]).replace('Headquarters', '').strip()
-        company_phone = ' '.join([each.text for each in address_phone_ticker_list if "Phone Number" in each.text]).replace('Phone Number', '').strip()
-        ticker = ' '.join([each.text for each in address_phone_ticker_list if "Stock Symbol" in each.text]).replace('Stock Symbol', '').strip() if address_phone_ticker_list else None
-
-        if "..." in company_address:
+        company_address_str = ' '.join([each.text for each in address_phone_ticker_list if
+                                    "Headquarters" in each.text])
+        company_phone = ' '.join([each.text for each in address_phone_ticker_list if
+                                  "Phone Number" in each.text])
+        ticker = ' '.join([each.text for each in address_phone_ticker_list if
+                           "Stock Symbol" in each.text]) if address_phone_ticker_list else None
+        company_address_strr = company_address_str.replace('Headquarters', '').strip()
+        if "..." in company_address_strr:
             address_elm = soup.find(class_="answer is-open")
-            company_address = address_elm.text.strip().split('located at')[-1] if address_elm else ""
-
-        company_address = clean_address(company_address)
-
-        funding = None
+            company_address_str = address_elm.text.strip().split('located at')[-1
+                                                                           ] if address_elm else ""
+        company_address = clean_address(company_address_str)
+        company_address = clean_newlines(company_address)
+        company_phone = company_phone.replace('Phone Number', '').strip()
+        ticker = ticker.replace('Stock Symbol', '').strip() if ticker else None
         funding_total = soup_find(soup, class_="funding-total")
+        funding = None
         if funding_total:
-            total_item_content = funding_total.find(class_="total-item-content")
-            funding = total_item_content.text if total_item_content else None
+            total_item = funding_total.find(class_="total-item")
+            if total_item:
+                total_item_content = total_item.find(class_="total-item-content")
+                if total_item_content:
+                    funding = total_item_content.text
         if not funding:
-            funding_element = soup.find('span', string="Amount")
-            funding = funding_element.find_next("span").text if funding_element else None
-
-        tech_stack = [tech.find(class_="name-text link").text for tech in soup_find_all(soup, class_="tech-name-wrapper") if tech]
-
+            funding = soup.find('span', string="Amount")
+            funding = funding.find_next("span") if funding else BeautifulSoup(
+                BLANK_HTML, 'html.parser')
+            funding = funding.text
+        abs_funding, inferred_funding = transform_employee_revenue_value(funding)
+        tech_stack_list = soup_find_all(soup, class_="tech-name-wrapper")
+        tech_stack = [tech.find(class_="name-text link").text if tech else None for tech in tech_stack_list]
         website_revenue_list = soup_find_all(soup, class_='icon-text-container')
-        company_website = ' '.join([each.text for each in website_revenue_list if "Website" in each.text]).replace('Website', '').strip()
-        raw_company_revenue = ' '.join([each.text for each in website_revenue_list if "Revenue" in each.text]).replace('Revenue', '').strip()
+        company_website = ' '.join(
+            [each.text for each in website_revenue_list if "Website" in each.text]
+        ).replace('Website', '').strip()
+        raw_company_revenue = ' '.join(
+            [each.text for each in website_revenue_list if "Revenue" in each.text]
+        ).replace('Revenue', '').strip()
         company_revenue, inferred_company_revenue = transform_employee_revenue_value(raw_company_revenue)
-
         company_sic, company_naics = extract_codes(soup)
-        company_sic = return_longest_code(company_sic)
         company_naics = return_longest_code(company_naics)
-
+        company_sic = return_longest_code(company_sic)
         social_links = soup_find_all(soup, class_="social-media-icon")
         linkedin_link = get_valid_url(social_links, "linkedin.com")
         facebook_link = get_valid_url(social_links, "facebook.com")
         twitter_link = get_valid_url(social_links, "twitter.com")
-
         topic_data = get_topic_intent_score(soup)
-        topic_score = topic_data.get('topic_score', {})
-
-        competitors = get_competitor_emp_revenue(soup)
+        topic_score = topic_data.get('topic_score')
+        competitors_str = get_competitor_emp_revenue(soup)
+        competitors =clean_newlines(competitors_str)
 
         contact_list = soup_find_all(soup, class_="person-card-container person-card-banner")
-        contacts = [{'name': contact.find('a', class_="link person-name").text.strip() if contact.find('a', class_="link person-name") else None, 
-                     'title': contact.find('p', class_="job-title").text.strip() if contact.find('p', class_="job-title") else None} for contact in contact_list]
-
-        result = {
-            'name': company_name,
-            'industry': industry,
-            'terminus_industry_label': terminus_industry_label,
-            'industry_status': industry_status_tag,
-            'employee_size': company_employee_size,
-            'inferred_employee_size': inferred_employee_size,
-            'address': company_address,
-            'phone': company_phone,
-            'website': company_website,
-            'revenue': company_revenue,
-            'inferred_company_revenue': inferred_company_revenue,
-            'sic': company_sic,
-            'naics': company_naics,
-            'description': company_desc,
-            'funding': funding,
-            'links': {
-                'linkedin_url': linkedin_link,
-                'facebook_url': facebook_link,
-                'twitter_url': twitter_link,
-                'crunchbase_url': None
-            },
-            'ticker': ticker,
-            'topic_score': topic_score,
-            'tech_stack': tech_stack,
-            'products': company_prod,
-            'competitor': competitors,
-            'acquisition': acquisition_subs,
-            'contacts': contacts
-        }
-        return result, None  # No error
+        contact_list = soup_find_all(soup, class_="person-card-container person-card-banner")
+        contacts_list = [
+            {'name': contact.find('a', class_="link person-name").text.strip()
+             if contact.find('a', class_="link person-name") else None, 'title': contact.find(
+                 'p', class_="job-title").text.strip() if contact.find('p', class_="job-title") else None}
+            for contact in contact_list]
+        contacts = clean_newlines(contacts_list)
+        
+        result = {'name': company_name, 'industry': industry,
+                  'terminus_industry_label': terminus_industry_label, 'industry_status':
+                  industry_status_tag, 'employee_size': company_employee_size,
+                  'inferred_employee_size': inferred_employee_size, 'address': company_address, 'phone': company_phone,
+                  'website': company_website, 'revenue': company_revenue,
+                  'inferred_company_revenue': inferred_company_revenue, 'sic': company_sic, 'naics':
+                  company_naics, 'description': company_desc, 'funding': abs_funding, 'inferred_funding': inferred_funding,
+                    'links': ({
+                      'linkedin_url': linkedin_link, 'facebook_url': facebook_link, 'twitter_url':
+                      twitter_link, 'crunchbase_url': None}), 'ticker': ticker, 'topic_score': topic_score,
+                  'tech_stack': tech_stack, 'products': company_prod, 'competitor': competitors,
+                  'acquisition': acquisition_subs, 'contacts': contacts
+                  }
+        return result,None  # No error
 
     except Exception as e:
         logger.error("Unexpected exception occurred:", exc_info=True)
         return {}, str(e)  # Return empty dict and error message
 
-zoominfo_data,error_text = scrape_company_info(soup)
-print(zoominfo_data,error_text)
+# zoominfo_data,error_text = scrape_company_info(soup)
+# print(zoominfo_data,error_text)
+
+
+def get_soup():
+    # Reading the HTML from the test file
+    #/Users/vivek.verma/datacloud_scraping_utilities/scraper_automation/source_automation/test_cases/rocketreach.html
+    #/Users/vivek.verma/datacloud_scraping_utilities/scraper_automation/source_automation/test_cases/cbinisght.html
+    #/Users/vivek.verma/datacloud_scraping_utilities/scraper_automation/source_automation/test_cases/owler.html
+    #/Users/vivek.verma/datacloud_scraping_utilities/scraper_automation/source_automation/test_cases/zoominfo.html
+    #/Users/vivek.verma/datacloud_scraping_utilities/scraper_automation/source_automation/test_cases/datanyze.html
+    #/Users/vivek.verma/datacloud_scraping_utilities/scraper_automation/source_automation/test_cases/visual_visitor.html
+    with open(r'terminus_utils/scrape_utility/temp.z_zource.html') as f:
+        html = f.read()
+    return BeautifulSoup(html, 'html.parser')
+
+# Get the BeautifulSoup object
+soup_object = get_soup()
+
+zoominfo_data,error_text = scrape_company_info(soup_object)
+print(zoominfo_data, error_text)
