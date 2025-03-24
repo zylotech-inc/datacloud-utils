@@ -81,7 +81,7 @@ def check_domain_and_update_url(domain_name, data_source_id, conn):
             logger.info(f"No entries found for domain '{domain_name}' in the database.")
             return {'domain_name': domain_name}
 
-        logger.info(f"Query results for domain '{domain_name}': {results}")
+        logger.info(f"Entry found for domain {domain_name} in Domain Data Sources table.")
 
         # Separate entries with and without source URLs
         url_entries = [row for row in results if row[1]]  # Rows with source_url
