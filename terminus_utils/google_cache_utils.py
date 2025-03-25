@@ -1,5 +1,6 @@
 import psycopg2
 from datetime import datetime, timedelta
+from terminus_utils.aws_utils import upload_html_to_s3
 from terminus_utils.logger import logger
 
 
@@ -122,7 +123,7 @@ def check_domain_and_update_url(domain_name, data_source_id, conn):
         logger.error(f"Error while checking domain '{domain_name}': {e}")
         return {'domain_name': domain_name}
 
-def update_table_with_url(domain, url, not_found, data_source_id, conn):
+def update_table_with_url(domain, url, not_found, data_source_id, conn, google_soup):
     """
     Update the table with domain and URL information, or insert if the domain and data_source_id do not exist.
     If the URL exists, update only the `last_used` timestamp without overwriting the URL.
@@ -157,7 +158,7 @@ def update_table_with_url(domain, url, not_found, data_source_id, conn):
             if existing_url:
                 # If the URL exists, update `last_used`
                 query = """
-                UPDATE domain_data_sources 
+                UPDATE domain_data_sources
                 SET last_used = %s 
                 WHERE domain_name = %s AND data_source_id = %s
                 """
@@ -172,27 +173,32 @@ def update_table_with_url(domain, url, not_found, data_source_id, conn):
                 cur.execute(query, (current_timestamp, domain, data_source_id))
 
             elif days_since_update > 180:
+                s3_uri = upload_html_to_s3(html_content=google_soup,
+                                            website=url, source='google')
                 # If `updated_at` is older than 180 days, update `source_url`, `last_used`, and `updated_at`
                 query = """
-                UPDATE domain_data_sources 
-                SET source_url = %s, last_used = %s, updated_at = %s 
+                UPDATE domain_data_sources
+                SET source_url = %s, last_used = %s, updated_at = %s , raw_html_google_s3_uri = %s
                 WHERE domain_name = %s AND data_source_id = %s
                 """
-                cur.execute(query, (url, current_timestamp, current_timestamp, domain, data_source_id))
+                cur.execute(query, (url, current_timestamp, current_timestamp, s3_uri, domain, data_source_id))
         else:
             # If the domain and data_source_id do not exist, insert a new record
             query = """
-            INSERT INTO domain_data_sources (domain_name, source_url, not_found, data_source_id, created_at, updated_at, last_used)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO domain_data_sources (
+                domain_name, source_url, not_found, data_source_id, created_at, updated_at, last_used, , raw_html_google_s3_uri
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
             cur.execute(query, (
-                domain, 
+                domain,
                 url, 
-                not_found, 
-                data_source_id, 
+                not_found,
+                data_source_id,
                 current_timestamp, 
                 current_timestamp, 
-                current_timestamp
+                current_timestamp,
+                s3_uri
             ))
 
         conn.commit()  # Commit the transaction if everything goes well
