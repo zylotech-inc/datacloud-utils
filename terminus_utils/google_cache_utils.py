@@ -123,7 +123,7 @@ def check_domain_and_update_url(domain_name, data_source_id, conn):
         logger.error(f"Error while checking domain '{domain_name}': {e}")
         return {'domain_name': domain_name}
 
-def update_table_with_url(domain, url, not_found, data_source_id, conn, google_soup, aws_access_key, aws_secret_key):
+def update_table_with_url(domain, url, not_found, data_source_id, conn, google_html_s3_uri):
     """
     Update the table with domain and URL information, or insert if the domain and data_source_id do not exist.
     If the URL exists, update only the `last_used` timestamp without overwriting the URL.
@@ -173,20 +173,14 @@ def update_table_with_url(domain, url, not_found, data_source_id, conn, google_s
                 cur.execute(query, (current_timestamp, domain, data_source_id))
 
             elif days_since_update > 180:
-                s3_uri = upload_html_to_s3(html_content=google_soup, aws_access_key=aws_access_key,
-                                           aws_secret_key=aws_secret_key, website=url, source='google'
-                                            )
                 # If `updated_at` is older than 180 days, update `source_url`, `last_used`, and `updated_at`
                 query = """
                 UPDATE domain_data_sources
                 SET source_url = %s, last_used = %s, updated_at = %s , raw_html_google_s3_uri = %s
                 WHERE domain_name = %s AND data_source_id = %s
                 """
-                cur.execute(query, (url, current_timestamp, current_timestamp, s3_uri, domain, data_source_id))
+                cur.execute(query, (url, current_timestamp, current_timestamp, google_html_s3_uri, domain, data_source_id))
         else:
-            s3_uri = upload_html_to_s3(html_content=google_soup, aws_access_key=aws_access_key, 
-                                       aws_secret_key=aws_secret_key, website=url, source='google'
-                                       )
             # If the domain and data_source_id do not exist, insert a new record
             query = """
             INSERT INTO domain_data_sources (
@@ -202,7 +196,7 @@ def update_table_with_url(domain, url, not_found, data_source_id, conn, google_s
                 current_timestamp, 
                 current_timestamp, 
                 current_timestamp,
-                s3_uri
+                google_html_s3_uri
             ))
 
         conn.commit()  # Commit the transaction if everything goes well
