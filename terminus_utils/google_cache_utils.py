@@ -1,6 +1,5 @@
 import psycopg2
 from datetime import datetime, timedelta
-from terminus_utils.aws_utils import upload_html_to_s3
 from terminus_utils.logger import logger
 
 

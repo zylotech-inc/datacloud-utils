@@ -201,18 +201,3 @@ def revenue_range_taxonomy_mapper(revenue: str) -> str:
     except (ValueError, TypeError):
         # logger.exception(f"{revenue} is not a valid revenue.")
         return ''
-
-
-def extract_domain(url):
-    """
-    Extracts the domain from a URL.
-
-    Parameters:
-    - url: The URL to extract the domain from.
-
-    Returns:
-    - str: The domain of the URL.
-    """
-    ext = tldextract.extract(url)
-    domain = ext.domain + '.' + ext.suffix
-    return domain
