@@ -183,6 +183,8 @@ def update_table_with_url(domain, url, not_found, data_source_id, conn, google_s
                 """
                 cur.execute(query, (url, current_timestamp, current_timestamp, s3_uri, domain, data_source_id))
         else:
+            s3_uri = upload_html_to_s3(html_content=google_soup,
+                                            website=url, source='google')
             # If the domain and data_source_id do not exist, insert a new record
             query = """
             INSERT INTO domain_data_sources (
