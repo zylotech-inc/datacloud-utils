@@ -5,7 +5,6 @@ from base64 import b64decode
 from uuid import uuid4
 import requests
 from bs4 import BeautifulSoup
-
 from terminus_utils.environment_utils import with_env_vars
 from terminus_utils.logger import logger
 

@@ -1,4 +1,4 @@
-from terminus_utils.api_utils import extract_domain
+from api_utils import extract_domain
 import boto3
 
 
