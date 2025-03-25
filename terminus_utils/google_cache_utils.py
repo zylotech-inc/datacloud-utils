@@ -186,7 +186,7 @@ def update_table_with_url(domain, url, not_found, data_source_id, conn, google_s
             # If the domain and data_source_id do not exist, insert a new record
             query = """
             INSERT INTO domain_data_sources (
-                domain_name, source_url, not_found, data_source_id, created_at, updated_at, last_used, , raw_html_google_s3_uri
+                domain_name, source_url, not_found, data_source_id, created_at, updated_at, last_used, raw_html_google_s3_uri
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
